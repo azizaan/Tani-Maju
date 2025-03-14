@@ -13,6 +13,7 @@ import static javax.swing.JOptionPane.showMessageDialog;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import javax.swing.JTextField;
+//import javaswingdev.login.SessionManager;
 //import loginandsignup.user.Home;
 //import java.util.Base64;
 
@@ -205,6 +206,7 @@ public class Login extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     public static String currentUserId = null;
+//    public static String currentUserIDKasir = null;
 //    public static String currentName = null;
 
     private void setupRFIDListener() {
@@ -259,6 +261,7 @@ public class Login extends javax.swing.JFrame {
                 String email = rs.getString("email");
 
                 SessionManager.currentName = fname;
+                SessionManager.currentUserIDKasir = userId;
 
                 // Save session data
                 String sessionQuery = "INSERT INTO session (user_id, full_name, email, status, login_time) VALUES (?, ?, ?, ?, NOW())";
@@ -347,7 +350,9 @@ public class Login extends javax.swing.JFrame {
                     currentUserId = userId;
                     System.out.println("User ID yang sedang login: " + userId);
                     SessionManager.currentName = fname;
+                    SessionManager.currentUserIDKasir = userId;
                     System.out.println("Nama yang sedang login: " + fname);
+                    System.out.println("Id yang sedang login: " + currentUserId);
 
                     // Simpan ke tabel session
                     String sessionQuery = "INSERT INTO session (user_id, full_name, email, status, login_time) VALUES (?, ?, ?, ?, NOW())";

@@ -1,0 +1,9 @@
+===== STRUK PEMBELIAN =====
+Pelanggan: aan
+Nama Item            Harga      Qty       
+-----------------------------------
+pupuk gacor          Rp50.000,00 2         
+-----------------------------------
+Diskon: 10%
+Total Bayar: Rp90.000,00
+===================================

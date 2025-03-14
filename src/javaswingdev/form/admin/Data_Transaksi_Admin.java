@@ -4,6 +4,7 @@ import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.GridLayout;
@@ -43,7 +44,7 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
 
     public Data_Transaksi_Admin(String name) {
         initComponents();
-        lb.setText("Form " + name);
+        lb.setText("Data Transaksi " + name);
         model = new DefaultTableModel() {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -57,11 +58,10 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
         model.addColumn("ID Transaksi");
         model.addColumn("Nama Kasir");
         model.addColumn("Nama Pembeli");
-        model.addColumn("Nama Pupuk");
         model.addColumn("Total Harga");
         model.addColumn("Diskon");
 
-//        loadData();
+        loadData();
 //        table.setEnabled(false);
     }
 
@@ -75,22 +75,28 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
             Connection c = Koneksi.getKoneksi();
             Statement s = c.createStatement();
 
-            String sql = "SELECT * FROM data_pupuk";
+            // Query hanya untuk data transaksi tanpa pupuk
+            String sql = "SELECT t.transaksi_id, u.full_name AS nama_kasir, "
+                    + "t.nama_pembeli, t.total_harga, t.diskon "
+                    + "FROM transaksi t "
+                    + "JOIN user u ON t.user_id = u.user_id";
+
             ResultSet r = s.executeQuery(sql);
 
             // Format angka ke Rupiah
             NumberFormat rupiahFormat = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
 
             while (r.next()) {
-                Object[] o = new Object[4]; // Sesuaikan ukuran array menjadi 4 (tanpa password)
-                o[0] = r.getString("id_pupuk");
-                o[1] = r.getString("nama_pupuk");
+                Object[] o = new Object[5]; // Hanya 5 kolom, tanpa nama_pupuk
+                o[0] = r.getString("transaksi_id");
+                o[1] = r.getString("nama_kasir");
+                o[2] = r.getString("nama_pembeli");
 
-                // Ambil harga dari database dan ubah ke format Rupiah
-                double harga = r.getDouble("harga_pupuk");
-                o[2] = rupiahFormat.format(harga);
+                // Konversi total harga ke format Rupiah
+                double totalHarga = r.getDouble("total_harga");
+                o[3] = rupiahFormat.format(totalHarga);
 
-                o[3] = r.getString("kode_pupuk");
+                o[4] = r.getInt("diskon"); // Diskon dalam bentuk integer
 
                 model.addRow(o);
             }
@@ -107,11 +113,8 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
     private void initComponents() {
 
         lb = new javax.swing.JLabel();
-        btnTambah = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         table = new javaswingdev.swing.table.Table();
-        btnEdit = new javax.swing.JButton();
-        btnHapus = new javax.swing.JButton();
         txtcari = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
         btnCetak = new javax.swing.JButton();
@@ -122,13 +125,6 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
         lb.setForeground(new java.awt.Color(125, 125, 125));
         lb.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         lb.setText("Data User");
-
-        btnTambah.setText("Tambah");
-        btnTambah.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnTambahActionPerformed(evt);
-            }
-        });
 
         table.setForeground(new java.awt.Color(0, 0, 255));
         table.setModel(new javax.swing.table.DefaultTableModel(
@@ -153,20 +149,6 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
             }
         });
         jScrollPane1.setViewportView(table);
-
-        btnEdit.setText("Edit");
-        btnEdit.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnEditActionPerformed(evt);
-            }
-        });
-
-        btnHapus.setText("Hapus");
-        btnHapus.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnHapusActionPerformed(evt);
-            }
-        });
 
         txtcari.setBackground(new java.awt.Color(255, 255, 255));
         txtcari.addKeyListener(new java.awt.event.KeyAdapter() {
@@ -197,12 +179,7 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(lb)
                             .addGroup(layout.createSequentialGroup()
-                                .addComponent(btnTambah)
-                                .addGap(18, 18, 18)
-                                .addComponent(btnEdit)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(btnHapus)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGap(259, 259, 259)
                                 .addComponent(btnCetak)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                 .addComponent(jLabel1)))
@@ -217,9 +194,6 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
                 .addComponent(lb, javax.swing.GroupLayout.PREFERRED_SIZE, 51, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(btnTambah, javax.swing.GroupLayout.PREFERRED_SIZE, 27, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnEdit)
-                    .addComponent(btnHapus)
                     .addComponent(txtcari, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel1)
                     .addComponent(btnCetak))
@@ -239,179 +213,6 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
     private String selectedKodePupuk;
 
 
-    private void btnTambahActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnTambahActionPerformed
-        String namaPupuk, hargaPupuk, kodePupuk, query;
-        String idPupuk = null;
-        String SUrl, SUser, SPass;
-        SUrl = "jdbc:MySQL://localhost:3306/studicase_pupuk";
-        SUser = "root";
-        SPass = "";
-
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
-            Statement st = con.createStatement();
-
-            // Membuat panel untuk input data
-            JPanel panel = new JPanel(new GridLayout(4, 2, 5, 5));
-            JTextField tfNamaPupuk = new JTextField(15);
-            JTextField tfHargaPupuk = new JTextField(15);
-
-            // ComboBox untuk memilih kode_pupuk
-            String[] kodePupuks = {"P001", "P002", "P003", "P004"};
-            JComboBox<String> cbKodePupuk = new JComboBox<>(kodePupuks);
-
-            // Menambahkan komponen ke panel
-            panel.add(new JLabel("Nama Pupuk:"));
-            panel.add(tfNamaPupuk);
-            panel.add(new JLabel("Harga Pupuk:"));
-            panel.add(tfHargaPupuk);
-            panel.add(new JLabel("Kode Pupuk:"));
-            panel.add(cbKodePupuk);
-
-            int result = JOptionPane.showConfirmDialog(null, panel,
-                    "Enter New Pupuk Details", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
-            if (result == JOptionPane.OK_OPTION) {
-                namaPupuk = tfNamaPupuk.getText().trim();
-                hargaPupuk = tfHargaPupuk.getText().trim();
-                kodePupuk = cbKodePupuk.getSelectedItem().toString();
-
-                // Validasi Nama Pupuk
-                if (namaPupuk.isEmpty()) {
-                    JOptionPane.showMessageDialog(null, "Nama Pupuk is required", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                } else if (!namaPupuk.matches("[a-zA-Z ]+")) {
-                    JOptionPane.showMessageDialog(null, "Nama Pupuk must only contain letters and spaces", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                // Validasi Harga Pupuk
-                if (hargaPupuk.isEmpty()) {
-                    JOptionPane.showMessageDialog(null, "Harga Pupuk is required", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                } else if (!hargaPupuk.matches("[0-9]+")) {
-                    JOptionPane.showMessageDialog(null, "Harga Pupuk must only contain numbers", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                // Cari id terakhir di tabel data_pupuk
-                String getLastIdQuery = "SELECT id_pupuk FROM data_pupuk ORDER BY id_pupuk DESC LIMIT 1";
-                ResultSet rs = st.executeQuery(getLastIdQuery);
-
-                if (rs.next()) {
-                    String lastId = rs.getString("id_pupuk");
-                    if (lastId != null && lastId.length() >= 4) {
-                        int num = Integer.parseInt(lastId.substring(5));
-                        idPupuk = String.format("pupuk%03d", num + 1);
-                    } else {
-                        idPupuk = "pupuk001";
-                    }
-                } else {
-                    idPupuk = "pupuk001";
-                }
-
-                // Query insert data ke tabel data_pupuk
-                query = "INSERT INTO data_pupuk (id_pupuk, nama_pupuk, harga_pupuk, kode_pupuk) "
-                        + "VALUES ('" + idPupuk + "', '" + namaPupuk + "', '" + hargaPupuk + "', '" + kodePupuk + "')";
-
-                st.execute(query);
-
-                JOptionPane.showMessageDialog(null, "New data_pupuk has been added successfully!");
-            } else {
-                JOptionPane.showMessageDialog(null, "Data entry canceled.");
-            }
-        } catch (Exception e) {
-            System.out.println("Error! " + e.getMessage());
-        }
-
-    }//GEN-LAST:event_btnTambahActionPerformed
-
-    private void btnEditActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEditActionPerformed
-        String SUrl = "jdbc:mysql://localhost:3306/studicase_pupuk";
-        String SUser = "root";
-        String SPass = "";
-
-        // Cek apakah sudah memilih data
-        if (selectedIdPupuk == null || selectedIdPupuk.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(null, "Please select a row from the table.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
-
-            // Membuat panel input
-            JPanel panel = new JPanel(new GridLayout(4, 2, 5, 5));
-            JTextField tfNamaPupuk = new JTextField(selectedNamaPupuk, 15);
-            JTextField tfHargaPupuk = new JTextField(selectedHargaPupuk, 15);
-
-            // ComboBox untuk memilih kode pupuk
-            String[] kodePupuks = {"P001", "P002", "P003", "P004"};
-            JComboBox<String> cbKodePupuk = new JComboBox<>(kodePupuks);
-            cbKodePupuk.setSelectedItem(selectedKodePupuk);
-
-            panel.add(new JLabel("Nama Pupuk:"));
-            panel.add(tfNamaPupuk);
-            panel.add(new JLabel("Harga Pupuk:"));
-            panel.add(tfHargaPupuk);
-            panel.add(new JLabel("Kode Pupuk:"));
-            panel.add(cbKodePupuk);
-
-            int result = JOptionPane.showConfirmDialog(null, panel, "Edit Data Pupuk", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
-            if (result == JOptionPane.OK_OPTION) {
-                String namaPupuk = tfNamaPupuk.getText().trim();
-                String hargaPupuk = tfHargaPupuk.getText().trim();
-                String kodePupuk = cbKodePupuk.getSelectedItem().toString();
-
-                // Validasi Nama Pupuk
-                if (namaPupuk.isEmpty() || !namaPupuk.matches("[a-zA-Z ]+")) {
-                    JOptionPane.showMessageDialog(null, "Nama Pupuk harus berisi huruf dan spasi saja.", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                // Validasi Harga Pupuk
-                double harga;
-                try {
-                    harga = Double.parseDouble(hargaPupuk);
-                    if (harga < 0) {
-                        JOptionPane.showMessageDialog(null, "Harga Pupuk tidak boleh negatif.", "Error", JOptionPane.ERROR_MESSAGE);
-                        return;
-                    }
-                } catch (NumberFormatException e) {
-                    JOptionPane.showMessageDialog(null, "Harga Pupuk harus berupa angka valid.", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                // Query Update menggunakan PreparedStatement untuk keamanan
-                String query = "UPDATE data_pupuk SET nama_pupuk = ?, harga_pupuk = ?, kode_pupuk = ? WHERE id_pupuk = ?";
-                PreparedStatement pst = con.prepareStatement(query);
-                pst.setString(1, namaPupuk);
-                pst.setDouble(2, harga);
-                pst.setString(3, kodePupuk);
-                pst.setString(4, selectedIdPupuk);
-
-                int updated = pst.executeUpdate();
-
-                if (updated > 0) {
-                    JOptionPane.showMessageDialog(null, "Data Pupuk berhasil diperbarui!");
-                    loadData(); // Panggil fungsi refresh tabel
-                } else {
-                    JOptionPane.showMessageDialog(null, "Gagal memperbarui data.", "Error", JOptionPane.ERROR_MESSAGE);
-                }
-
-                pst.close();
-                con.close();
-            } else {
-                JOptionPane.showMessageDialog(null, "Edit data dibatalkan.");
-            }
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Error: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }//GEN-LAST:event_btnEditActionPerformed
-
     private void mouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_mouseClicked
         int row = table.getSelectedRow();
 
@@ -421,57 +222,65 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
             return;
         }
 
-        // Ambil data dari tabel berdasarkan indeks kolom
-        selectedIdPupuk = table.getValueAt(row, 0).toString();
-        selectedNamaPupuk = table.getValueAt(row, 1).toString();
-        selectedHargaPupuk = table.getValueAt(row, 2).toString();
-        selectedKodePupuk = table.getValueAt(row, 3).toString();
-    }//GEN-LAST:event_mouseClicked
-
-    private void btnHapusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnHapusActionPerformed
-        String SUrl = "jdbc:mysql://localhost:3306/studicase_pupuk";
-        String SUser = "root";
-        String SPass = "";
-
-        // Cek apakah ada data yang dipilih
-        if (selectedIdPupuk == null || selectedIdPupuk.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(null, "Please select a row to delete.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        // Konfirmasi sebelum menghapus
-        int confirm = JOptionPane.showConfirmDialog(null, "Are you sure you want to delete this data?",
-                "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
+        // Ambil transaksi_id dari tabel transaksi
+        String transaksiId = table.getValueAt(row, 0).toString();
 
         try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
+            Connection con = Koneksi.getKoneksi();
+            String sql = "SELECT p.nama_pupuk, td.jumlah_beli "
+                    + "FROM transaksi_detail td "
+                    + "JOIN data_pupuk p ON td.id_pupuk = p.id_pupuk "
+                    + "WHERE td.transaksi_id = ?";
 
-            // Query DELETE menggunakan PreparedStatement
-            String query = "DELETE FROM data_pupuk WHERE id_pupuk = ?";
-            PreparedStatement pst = con.prepareStatement(query);
-            pst.setString(1, selectedIdPupuk);
+            PreparedStatement pst = con.prepareStatement(sql);
+            pst.setString(1, transaksiId);
+            ResultSet rs = pst.executeQuery();
 
-            int deleted = pst.executeUpdate();
+            // Model tabel untuk menampilkan data dalam JOptionPane
+            DefaultTableModel model = new DefaultTableModel();
+            model.addColumn("Nama Pupuk");
+            model.addColumn("Jumlah Beli");
 
-            if (deleted > 0) {
-                JOptionPane.showMessageDialog(null, "Data Pupuk successfully deleted!");
-                loadData(); // Refresh tabel setelah penghapusan
-            } else {
-                JOptionPane.showMessageDialog(null, "Failed to delete data.", "Error", JOptionPane.ERROR_MESSAGE);
+            int rowCount = 0; // Hitung jumlah baris data
+            while (rs.next()) {
+                Object[] rowData = {
+                    rs.getString("nama_pupuk"),
+                    rs.getInt("jumlah_beli")
+                };
+                model.addRow(rowData);
+                rowCount++;
             }
 
+            rs.close();
             pst.close();
             con.close();
+
+            // Jika ada data, tampilkan dalam tabel JOptionPane
+            if (rowCount > 0) {
+                JTable tablePupuk = new JTable(model);
+                tablePupuk.setEnabled(false); // Agar data tidak bisa diedit oleh pengguna
+
+                // Buat JScrollPane dengan ukuran dinamis
+                JScrollPane scrollPane = new JScrollPane(tablePupuk);
+
+                // Menyesuaikan tinggi berdasarkan jumlah baris (maksimal 5 baris)
+                int rowHeight = tablePupuk.getRowHeight();
+                int height = Math.min(rowHeight * rowCount + 30, rowHeight * 5 + 30); // Maksimal 5 baris sebelum perlu scroll
+
+                // Menentukan lebar tabel otomatis berdasarkan konten
+                tablePupuk.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+                tablePupuk.setPreferredScrollableViewportSize(new Dimension(300, height));
+
+                JOptionPane.showMessageDialog(null, scrollPane, "Detail Pupuk dalam Transaksi", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(null, "Tidak ada pupuk dalam transaksi ini.",
+                        "Detail Pupuk", JOptionPane.INFORMATION_MESSAGE);
+            }
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Error: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Gagal mengambil data pupuk: " + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
         }
-
-    }//GEN-LAST:event_btnHapusActionPerformed
-
+    }//GEN-LAST:event_mouseClicked
 
     private void btnCetakActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCetakActionPerformed
         // Pilih opsi cetak
@@ -637,9 +446,6 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnCetak;
-    private javax.swing.JButton btnEdit;
-    private javax.swing.JButton btnHapus;
-    private javax.swing.JButton btnTambah;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JLabel lb;

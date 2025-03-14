@@ -9,5 +9,7 @@ package javaswingdev.login;
  * @author ACER
  */
 public class SessionManager {
+
     public static String currentName;
+    public static String currentUserIDKasir;
 }

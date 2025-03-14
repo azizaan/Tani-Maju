@@ -19,6 +19,9 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.text.DecimalFormat;
 import javaswingdev.form.Koneksi;
+import javaswingdev.login.SessionManager;
+import javaswingdev.form.admin.Form_Transaksi_Admin;
+import javaswingdev.form.admin.StrukPembelian;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 import java.util.List;
@@ -34,14 +37,17 @@ public class FormBayar extends JFrame {
     private double totalHarga;
     public String transaksiID = generateTransaksiID();
     private final DecimalFormat df = new DecimalFormat("#,###");
+    private Form_Transaksi_Admin formTransaksiAdmin;
+//    private int userID; // Simpan user_id dari login
 
     private boolean isFormatting = false;
 
     private List<String[]> dataTransaksi;
 
-    public FormBayar(List dataTransaksi, int total) {
+    public FormBayar(List dataTransaksi, int total, Form_Transaksi_Admin formTransaksiAdmin) {
         this.totalHarga = total;
         this.dataTransaksi = dataTransaksi;
+        this.formTransaksiAdmin = formTransaksiAdmin;
         setTitle("Bayar");
         setSize(700, 300);
         setLocationRelativeTo(null);
@@ -177,6 +183,7 @@ public class FormBayar extends JFrame {
 
     private void simpanTransaksi() {
         String pelanggan = txtPelanggan.getText().trim();
+        String UserId = SessionManager.currentUserIDKasir;
         double grandTotal = getDouble(txtGrandTotal.getText().replace("Rp ", ""));
         int diskon = (int) spinDiskon.getValue();
 
@@ -185,28 +192,27 @@ public class FormBayar extends JFrame {
             return;
         }
 
-        try (Connection con = Koneksi.getKoneksi()) { // Ensure connection is closed automatically
+        try (Connection con = Koneksi.getKoneksi()) {
             if (con == null || con.isClosed()) {
                 JOptionPane.showMessageDialog(this, "Koneksi ke database gagal.", "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
-            con.setAutoCommit(false); // Disable auto-commit for transaction
+            con.setAutoCommit(false);
 
-            // Insert into transaksi table
-            String sqlTransaksi = "INSERT INTO transaksi (nama_pembeli, total_harga, diskon, status) VALUES (?, ?, ?, ?)";
+            String sqlTransaksi = "INSERT INTO transaksi (user_id, nama_pembeli, total_harga, diskon, status, waktu_transaksi) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
+
             try (PreparedStatement pstTransaksi = con.prepareStatement(sqlTransaksi, PreparedStatement.RETURN_GENERATED_KEYS)) {
-                pstTransaksi.setString(1, pelanggan);
-                pstTransaksi.setDouble(2, grandTotal);
-                pstTransaksi.setInt(3, diskon);
-                pstTransaksi.setString(4, "Lunas");
-
+                pstTransaksi.setString(1, UserId);
+                pstTransaksi.setString(2, pelanggan);
+                pstTransaksi.setDouble(3, grandTotal);
+                pstTransaksi.setInt(4, diskon);
+                pstTransaksi.setString(5, "Lunas");
                 int rowsInserted = pstTransaksi.executeUpdate();
                 if (rowsInserted == 0) {
                     throw new SQLException("Gagal menyimpan transaksi.");
                 }
 
-                // Get the generated transaction ID
                 String transaksiID = null;
                 try (ResultSet rs = pstTransaksi.getGeneratedKeys()) {
                     if (rs.next()) {
@@ -216,9 +222,11 @@ public class FormBayar extends JFrame {
                     }
                 }
 
-                // Prepare SQL for batch insert into transaksi_detail
                 String sqlDetail = "INSERT INTO transaksi_detail (transaksi_id, id_pupuk, jumlah_beli) VALUES (?, ?, ?)";
-                try (PreparedStatement pstDetail = con.prepareStatement(sqlDetail)) {
+                String sqlUpdateStock = "UPDATE stock_pupuk SET jumlah_stock = jumlah_stock - ? WHERE id_pupuk = ?";
+
+                try (PreparedStatement pstDetail = con.prepareStatement(sqlDetail); PreparedStatement pstUpdateStock = con.prepareStatement(sqlUpdateStock)) {
+
                     for (String[] item : dataTransaksi) {
                         String namaPupuk = item[0];
                         int jumlah = Integer.parseInt(item[2]);
@@ -228,24 +236,29 @@ public class FormBayar extends JFrame {
                             throw new SQLException("ID pupuk untuk " + namaPupuk + " tidak ditemukan.");
                         }
 
-                        pstDetail.setString(1, transaksiID);  // Set the generated transaksiID
+                        pstDetail.setString(1, transaksiID);
                         pstDetail.setString(2, idPupuk);
                         pstDetail.setInt(3, jumlah);
-                        pstDetail.addBatch(); // Add to batch
+                        pstDetail.addBatch();
+
+                        pstUpdateStock.setInt(1, jumlah);
+                        pstUpdateStock.setString(2, idPupuk);
+                        pstUpdateStock.addBatch();
                     }
 
-                    // Execute batch insert
                     pstDetail.executeBatch();
-                } catch (SQLException e) {
-                    throw e;
+                    pstUpdateStock.executeBatch();
                 }
 
-                // Commit the transaction
                 con.commit();
                 JOptionPane.showMessageDialog(this, "Pembayaran dan transaksi berhasil disimpan!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+                formTransaksiAdmin.refreshTable();
+                double dibayar = getDouble(txtDibayar.getText().replace("Rp ", ""));
+                double subtotal = getDouble(txtSubTotal.getText().replace("Rp ", ""));
+                StrukPembelian.simpanStrukPDF(dataTransaksi, pelanggan, grandTotal, dibayar, diskon, subtotal);
+
                 dispose();
             } catch (SQLException e) {
-                // Rollback if any error occurs
                 try {
                     if (con != null && !con.isClosed()) {
                         con.rollback();
@@ -341,8 +354,8 @@ public class FormBayar extends JFrame {
     }
 
     public static void main(String[] args) {
-        List<String> transaksi = Arrays.asList("Item1", "Item2");
-        new FormBayar(transaksi, 2000).setVisible(true);
-
+        List<String> transaksi = Arrays.asList(new String[]{"Item1", "2", "1000"}); // Sesuaikan format datanya
+        new FormBayar(transaksi, 2000, null).setVisible(true);
     }
+
 }

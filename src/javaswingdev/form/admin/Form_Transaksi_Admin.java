@@ -19,6 +19,7 @@ import javax.swing.table.DefaultTableModel;
 import javaswingdev.form.admin.FormBayar;
 import java.sql.SQLException; // Import PreparedStatement
 import java.sql.PreparedStatement; // Import PreparedStatement
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.Timer;
@@ -66,17 +67,18 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
 
             ResultSet r = s.executeQuery(sql);
 
-            // Format angka ke Rupiah
-            NumberFormat rupiahFormat = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
+            // Gunakan DecimalFormat untuk menambahkan titik pemisah ribuan
+            DecimalFormat formatRupiah = new DecimalFormat("#,###");
 
             while (r.next()) {
                 Object[] o = new Object[4]; // Tambah kolom untuk stok
                 o[0] = r.getString("id_pupuk");
                 o[1] = r.getString("nama_pupuk");
 
-                // Ambil harga dari database dan ubah ke format Rupiah
+                // Ambil harga dari database dan format ke Rupiah dengan titik pemisah ribuan
                 double harga = r.getDouble("harga_pupuk");
-                o[2] = rupiahFormat.format(harga);
+                String hargaFormatted = "Rp" + formatRupiah.format(harga);
+                o[2] = hargaFormatted;
 
                 // Ambil stok dari tabel stock_pupuk
                 o[3] = r.getInt("jumlah_stock"); // Pastikan kolom stok tampil
@@ -307,10 +309,10 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
                 return;
             }
 
-            // Konversi harga dari String ke Double
-            NumberFormat formatRupiah = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
-            double hargaPupuk = formatRupiah.parse(hargaPupukStr).doubleValue();
-            double totalHarga = hargaPupuk * jumlahBeli;
+            // 🔥 Hapus "Rp" dan titik (.) pada harga sebelum parsing
+            String hargaBersih = hargaPupukStr.replace("Rp", "").replace(".", "").trim();
+            int hargaPupuk = Integer.parseInt(hargaBersih);
+            int totalHarga = hargaPupuk * jumlahBeli;
 
             DefaultTableModel transaksiModel = (DefaultTableModel) tableTransaksi.getModel();
             boolean sudahAda = false;
@@ -328,7 +330,7 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
                     }
 
                     transaksiModel.setValueAt(jumlahBaru, i, 2);
-                    transaksiModel.setValueAt(formatRupiah.format(hargaPupuk * jumlahBaru), i, 3);
+                    transaksiModel.setValueAt(formatRupiah(hargaPupuk * jumlahBaru), i, 3);
                     sudahAda = true;
                     break;
                 }
@@ -336,19 +338,23 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
 
             if (!sudahAda) {
                 transaksiModel.addRow(new Object[]{
-                    namaPupuk, formatRupiah.format(hargaPupuk), jumlahBeli, formatRupiah.format(totalHarga)
+                    namaPupuk, formatRupiah(hargaPupuk), jumlahBeli, formatRupiah(totalHarga)
                 });
             }
 
-            hitungTotalHarga(); // 🔥 Pastikan total harga dihitung ulang setelah perubahan
+            hitungTotalHarga(); // 🔥 Hitung ulang total harga setelah update
 
             JOptionPane.showMessageDialog(null, "Berhasil ditambahkan ke transaksi!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(null, "Masukkan angka yang valid!", "Error", JOptionPane.ERROR_MESSAGE);
-        } catch (ParseException e) {
-            JOptionPane.showMessageDialog(null, "Terjadi kesalahan dalam konversi harga!", "Error", JOptionPane.ERROR_MESSAGE);
         }
+
     }//GEN-LAST:event_tablemouseClicked
+
+    public String formatRupiah(int angka) {
+        DecimalFormat formatRupiah = new DecimalFormat("#,###");
+        return "Rp" + formatRupiah.format(angka);
+    }
 
     private void tableTransaksimouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tableTransaksimouseClicked
         int row = tableTransaksi.getSelectedRow();
@@ -384,24 +390,26 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
 
             int jumlahBaru = jumlahBeli - jumlahKurangi;
             DefaultTableModel model = (DefaultTableModel) tableTransaksi.getModel();
-            NumberFormat formatRupiah = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
-            double hargaPupuk = formatRupiah.parse(hargaPupukStr).doubleValue();
+
+            // 🔥 Hapus "Rp" dan titik sebelum parsing harga
+            String hargaBersih = hargaPupukStr.replace("Rp", "").replace(".", "").trim();
+            int hargaPupuk = Integer.parseInt(hargaBersih);
+            int totalHargaBaru = hargaPupuk * jumlahBaru;
 
             if (jumlahBaru == 0) {
                 model.removeRow(row);
             } else {
                 tableTransaksi.setValueAt(jumlahBaru, row, 2);
-                tableTransaksi.setValueAt(formatRupiah.format(hargaPupuk * jumlahBaru), row, 3);
+                tableTransaksi.setValueAt(formatRupiah(totalHargaBaru), row, 3);
             }
 
-            hitungTotalHarga(); // 🔥 Pastikan total harga dihitung ulang setelah pengurangan
+            hitungTotalHarga(); // 🔥 Hitung ulang total harga setelah pengurangan
 
             JOptionPane.showMessageDialog(null, "Jumlah berhasil dikurangi!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(null, "Masukkan angka yang valid!", "Error", JOptionPane.ERROR_MESSAGE);
-        } catch (ParseException e) {
-            JOptionPane.showMessageDialog(null, "Terjadi kesalahan dalam konversi harga!", "Error", JOptionPane.ERROR_MESSAGE);
         }
+
     }//GEN-LAST:event_tableTransaksimouseClicked
 
     private void hitungTotalHarga() {
@@ -463,11 +471,23 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
         System.out.println("======================");
 
         // Kirim data transaksi ke FormBayar
-        FormBayar bayarFrame = new FormBayar(dataTransaksi, totalKeseluruhan);
+        FormBayar bayarFrame = new FormBayar(dataTransaksi, totalKeseluruhan, this);
         bayarFrame.setVisible(true);
     }//GEN-LAST:event_BayarActionPerformed
 
-    public void searchUser(String keyword) {
+    public void refreshTable() {
+        // Menghapus semua data di tabel sebelum memuat ulang
+        DefaultTableModel model = (DefaultTableModel) tableTransaksi.getModel();
+        model.setRowCount(0);
+
+        // Panggil metode yang memuat ulang data transaksi
+        loadData();
+
+        // Jika ada komponen lain yang perlu diperbarui, tambahkan di sini
+        System.out.println("Tabel transaksi diperbarui dan dikosongkan sebelum reload.");
+    }
+
+    public void searchData(String keyword) {
         model.getDataVector().removeAllElements();
         model.fireTableDataChanged();
 
@@ -531,7 +551,7 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
         searchDelayTimer = new Timer(300, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                searchUser(keyword);
+                searchData(keyword);
             }
         });
         searchDelayTimer.setRepeats(false);
