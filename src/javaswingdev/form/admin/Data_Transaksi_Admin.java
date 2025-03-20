@@ -16,6 +16,7 @@ import java.awt.print.Printable;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -35,10 +36,17 @@ import javax.swing.ImageIcon;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import javax.swing.JFileChooser;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class Data_Transaksi_Admin extends javax.swing.JPanel {
 
@@ -160,7 +168,7 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
         jLabel1.setForeground(new java.awt.Color(0, 0, 0));
         jLabel1.setText("Cari Data");
 
-        btnCetak.setText("Cetak");
+        btnCetak.setText("Cetak Transaksi");
         btnCetak.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnCetakActionPerformed(evt);
@@ -179,7 +187,6 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(lb)
                             .addGroup(layout.createSequentialGroup()
-                                .addGap(259, 259, 259)
                                 .addComponent(btnCetak)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                 .addComponent(jLabel1)))
@@ -283,104 +290,162 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
     }//GEN-LAST:event_mouseClicked
 
     private void btnCetakActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCetakActionPerformed
-        // Pilih opsi cetak
-        String[] options = {"Cetak Satu", "Cetak Beberapa", "Cetak Semua"};
-        int choice = JOptionPane.showOptionDialog(null, "Pilih opsi cetak:", "Opsi Cetak",
-                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
-                null, options, options[0]);
+        try {
+            Connection c = Koneksi.getKoneksi();
+            Statement s = c.createStatement();
 
-        List<String> idPupukList = new ArrayList<>();
+            // Mengambil daftar tahun transaksi dari database
+            String queryTahun = "SELECT DISTINCT YEAR(waktu_transaksi) AS tahun FROM transaksi ORDER BY tahun DESC";
+            ResultSet rsTahun = s.executeQuery(queryTahun);
 
-        if (choice == 0) { // Cetak Satu
-            List<String> allIds = getAllPupukIds();
-            String selected = (String) JOptionPane.showInputDialog(null, "Pilih pupuk yang ingin dicetak:", "Pilih Pupuk",
-                    JOptionPane.QUESTION_MESSAGE, null,
-                    allIds.toArray(), allIds.get(0));
-            if (selected != null) {
-                idPupukList.add(selected);
+            ArrayList<String> listTahun = new ArrayList<>();
+            while (rsTahun.next()) {
+                listTahun.add(rsTahun.getString("tahun"));
             }
-        } else if (choice == 1) { // Cetak Beberapa dengan JTable
-            List<String> allIds = getAllPupukIds();
-            DefaultTableModel model = new DefaultTableModel(new Object[]{"Pilih", "ID Pupuk"}, 0);
-            for (String id : allIds) {
-                model.addRow(new Object[]{false, id});
+            rsTahun.close();
+
+            if (listTahun.isEmpty()) {
+                JOptionPane.showMessageDialog(null, "Tidak ada data transaksi yang tersedia.", "Info", JOptionPane.INFORMATION_MESSAGE);
+                return;
             }
 
-            JTable table = new JTable(model) {
-                @Override
-                public Class<?> getColumnClass(int column) {
-                    return column == 0 ? Boolean.class : String.class;
-                }
-            };
+            String tahunDipilih = (String) JOptionPane.showInputDialog(
+                    null, "Pilih Tahun:", "Cetak Laporan",
+                    JOptionPane.QUESTION_MESSAGE, null, listTahun.toArray(), listTahun.get(0));
 
-            JScrollPane scrollPane = new JScrollPane(table);
-            int confirm = JOptionPane.showConfirmDialog(null, scrollPane, "Pilih Pupuk untuk Dicetak", JOptionPane.OK_CANCEL_OPTION);
-
-            if (confirm == JOptionPane.OK_OPTION) {
-                for (int i = 0; i < model.getRowCount(); i++) {
-                    if ((Boolean) model.getValueAt(i, 0)) {
-                        idPupukList.add((String) model.getValueAt(i, 1));
-                    }
-                }
+            if (tahunDipilih == null) {
+                return;
             }
-        } else if (choice == 2) { // Cetak Semua
-            idPupukList.addAll(getAllPupukIds());
+
+            // Ambil daftar bulan yang memiliki transaksi pada tahun yang dipilih
+            String queryBulan = "SELECT DISTINCT MONTH(waktu_transaksi) AS bulan FROM transaksi WHERE YEAR(waktu_transaksi) = ? ORDER BY bulan ASC";
+            PreparedStatement psBulan = c.prepareStatement(queryBulan);
+            psBulan.setString(1, tahunDipilih);
+            ResultSet rsBulan = psBulan.executeQuery();
+
+            LinkedHashMap<String, Integer> mapBulan = new LinkedHashMap<>();
+            String[] bulanNama = {"Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"};
+
+            while (rsBulan.next()) {
+                int bulanIndex = rsBulan.getInt("bulan");
+                mapBulan.put(bulanNama[bulanIndex - 1], bulanIndex);
+            }
+            rsBulan.close();
+
+            if (mapBulan.isEmpty()) {
+                JOptionPane.showMessageDialog(null, "Tidak ada transaksi pada tahun " + tahunDipilih, "Info", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            String bulanDipilih = (String) JOptionPane.showInputDialog(
+                    null, "Pilih Bulan:", "Cetak Laporan",
+                    JOptionPane.QUESTION_MESSAGE, null, mapBulan.keySet().toArray(), mapBulan.keySet().iterator().next());
+
+            if (bulanDipilih == null) {
+                return;
+            }
+
+            int bulanIndex = mapBulan.get(bulanDipilih);
+            String bulanString = (bulanIndex < 10) ? "0" + bulanIndex : String.valueOf(bulanIndex);
+
+            // Query untuk transaksi
+            String sql = "SELECT "
+                    + "    t.transaksi_id, "
+                    + "    t.waktu_transaksi, "
+                    + "    t.diskon, "
+                    + "    SUM(d.jumlah_beli * dp.harga_pupuk) AS harga_normal, "
+                    + // Total harga sebelum diskon
+                    "    (SUM(d.jumlah_beli * dp.harga_pupuk) * (t.diskon / 100.0)) AS diskon_nominal, "
+                    + // Diskon dalam nominal
+                    "    (SUM(d.jumlah_beli * dp.harga_pupuk) - (SUM(d.jumlah_beli * dp.harga_pupuk) * (t.diskon / 100.0))) AS total_harga "
+                    + // Harga setelah diskon
+                    "FROM transaksi t "
+                    + "JOIN transaksi_detail d ON t.transaksi_id = d.transaksi_id "
+                    + "JOIN data_pupuk dp ON d.id_pupuk = dp.id_pupuk "
+                    + "WHERE YEAR(t.waktu_transaksi) = ? AND MONTH(t.waktu_transaksi) = ? "
+                    + "GROUP BY t.transaksi_id, t.waktu_transaksi, t.diskon;";
+
+            PreparedStatement ps = c.prepareStatement(sql);
+            ps.setString(1, tahunDipilih);
+            ps.setString(2, bulanString);
+            ResultSet rs = ps.executeQuery();
+
+            if (!rs.isBeforeFirst()) {
+                JOptionPane.showMessageDialog(null, "Tidak ada transaksi pada " + bulanDipilih + " " + tahunDipilih, "Info", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            Workbook workbook = new XSSFWorkbook();
+            Sheet sheet = workbook.createSheet("Laporan " + bulanDipilih + " " + tahunDipilih);
+
+            Row headerRow = sheet.createRow(0);
+            String[] columns = {"ID Transaksi", "Tanggal", "Nama Pupuk", "Jumlah Beli", "Harga Pupuk", "Total Harga Awal", "Diskon", "Total Harga Akhir", "Keuntungan"};
+
+            for (int i = 0; i < columns.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(columns[i]);
+            }
+
+            int rowNum = 1;
+            double totalUang = 0;
+            double totalKeuntungan = 0;
+            NumberFormat formatRupiah = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
+
+            while (rs.next()) {
+                String transaksiId = rs.getString("transaksi_id");
+                String waktuTransaksi = rs.getString("waktu_transaksi");
+                double diskon = rs.getDouble("diskon"); // Diskon dalam persen
+                double hargaNormal = rs.getDouble("harga_normal"); // Harga sebelum diskon
+                double diskonNominal = rs.getDouble("diskon_nominal"); // Diskon dalam Rupiah
+                double totalHarga = rs.getDouble("total_harga"); // Harga setelah diskon
+
+                // Tambahkan ke total keseluruhan
+                totalUang += totalHarga;
+
+                // Tambahkan data ke Excel
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(transaksiId);
+                row.createCell(1).setCellValue(waktuTransaksi);
+                row.createCell(2).setCellValue(diskon + "%"); // Menampilkan diskon dalam persen
+                row.createCell(3).setCellValue(formatRupiah.format(hargaNormal)); // Harga sebelum diskon
+                row.createCell(4).setCellValue(formatRupiah.format(diskonNominal)); // Diskon dalam Rupiah
+                row.createCell(5).setCellValue(formatRupiah.format(totalHarga)); // Total setelah diskon
+            }
+
+            rs.close();
+            // Menampilkan total uang di akhir laporan
+            Row totalRow = sheet.createRow(rowNum++);
+            totalRow.createCell(4).setCellValue("TOTAL:");
+            totalRow.createCell(5).setCellValue(formatRupiah.format(totalUang));
+
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogTitle("Simpan Laporan");
+            fileChooser.setSelectedFile(new File("Laporan_Pupuk_" + bulanDipilih + "_" + tahunDipilih + ".xlsx"));
+
+            int userSelection = fileChooser.showSaveDialog(null);
+            if (userSelection != JFileChooser.APPROVE_OPTION) {
+                JOptionPane.showMessageDialog(null, "Penyimpanan dibatalkan.", "Info", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            File fileToSave = fileChooser.getSelectedFile();
+            String filePath = fileToSave.getAbsolutePath();
+            if (!filePath.toLowerCase().endsWith(".xlsx")) {
+                filePath += ".xlsx";
+            }
+
+            FileOutputStream fileOut = new FileOutputStream(filePath);
+            workbook.write(fileOut);
+            fileOut.close();
+            workbook.close();
+
+            JOptionPane.showMessageDialog(null, "Laporan berhasil disimpan di: " + filePath, "Sukses", JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Gagal mencetak laporan: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
         }
 
-        if (idPupukList.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "Tidak ada data untuk dicetak.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        // Cetak semua barcode dalam daftar
-        PrinterJob job = PrinterJob.getPrinterJob();
-        job.setPrintable(new Printable() {
-            @Override
-            public int print(Graphics g, PageFormat pf, int pageIndex) throws PrinterException {
-                int barcodesPerPage = 5; // Sesuaikan dengan ukuran halaman dan barcode
-                int barcodeHeight = 100; // Perkiraan tinggi barcode dengan teks
-                int startY = (int) pf.getImageableY();
-                int startX = (int) pf.getImageableX();
-                int barcodeWidth = 200;
-
-                int startIndex = pageIndex * barcodesPerPage;
-                if (startIndex >= idPupukList.size()) {
-                    return Printable.NO_SUCH_PAGE;
-                }
-
-                for (int i = 0; i < barcodesPerPage && (startIndex + i) < idPupukList.size(); i++) {
-                    String idPupuk = idPupukList.get(startIndex + i);
-                    String barcodePath = BarcodeGenerator.saveBarcodeImage(idPupuk);
-                    if (barcodePath == null) {
-                        return Printable.NO_SUCH_PAGE;
-                    }
-
-                    try {
-                        BufferedImage barcode = ImageIO.read(new File(barcodePath));
-                        g.drawImage(barcode, startX, startY + (i * barcodeHeight), barcodeWidth, barcodeHeight - 20, null);
-
-                        // Tambahkan teks ID di bawah barcode
-                        g.setFont(new Font("Arial", Font.BOLD, 12));
-                        g.drawString(idPupuk, startX + (barcodeWidth / 2) - 20, startY + (i * barcodeHeight) + barcodeHeight - 5);
-
-                    } catch (Exception e) {
-                        return Printable.NO_SUCH_PAGE;
-                    }
-                }
-                return Printable.PAGE_EXISTS;
-            }
-        });
-
-        boolean doPrint = job.printDialog();
-        if (doPrint) {
-            try {
-                job.print();
-                JOptionPane.showMessageDialog(null, "Barcode berhasil dicetak!");
-            } catch (PrinterException e) {
-                e.printStackTrace();
-                JOptionPane.showMessageDialog(null, "Terjadi kesalahan saat mencetak: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        }
     }//GEN-LAST:event_btnCetakActionPerformed
 
     private List<String> getAllPupukIds() {

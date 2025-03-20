@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.sql.ResultSet;
 import java.util.Arrays;
+import static javaswingdev.form.admin.StrukPembelian.simpanStrukPDF;
 
 public class FormBayar extends JFrame {
 
@@ -356,6 +357,8 @@ public class FormBayar extends JFrame {
     public static void main(String[] args) {
         List<String> transaksi = Arrays.asList(new String[]{"Item1", "2", "1000"}); // Sesuaikan format datanya
         new FormBayar(transaksi, 2000, null).setVisible(true);
+//        simpanStrukPDF(dataTransaksi, "Pelanggan A", 50000, 60000, 10, 55000);
+
     }
 
 }

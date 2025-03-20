@@ -13,6 +13,7 @@ import com.itextpdf.text.pdf.*;
 import java.awt.Desktop;
 import javax.swing.*;
 import java.io.File;
+import java.io.*;
 import java.io.FileOutputStream;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -22,29 +23,25 @@ import java.util.List;
 public class StrukPembelian {
 
     public static void simpanStrukPDF(List<String[]> dataTransaksi, String pelanggan, double totalBayar, double tunai, int diskon, double subtotal) {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Simpan Struk");
-        fileChooser.setSelectedFile(new File("Struk_Indomaret.pdf"));
-
-        int userSelection = fileChooser.showSaveDialog(null);
-        if (userSelection != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-
-        File fileToSave = fileChooser.getSelectedFile();
-        String filePath = fileToSave.getAbsolutePath();
-        if (!filePath.endsWith(".pdf")) {
-            filePath += ".pdf";
-        }
-
-        Document document = new Document(PageSize.A6);
         try {
-            PdfWriter.getInstance(document, new FileOutputStream(filePath));
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            Document document = new Document(PageSize.A6);
+            PdfWriter.getInstance(document, outputStream);
             document.open();
 
             Font fontTitle = new Font(Font.HELVETICA, 12, Font.BOLD);
             Font fontNormal = new Font(Font.HELVETICA, 8, Font.NORMAL);
             Font fontBold = new Font(Font.HELVETICA, 8, Font.BOLD);
+
+            // Tambahkan logo di atas nama toko
+            try {
+                Image logo = Image.getInstance("src/Icon/Logo_panjang.png"); // Sesuaikan dengan path logo
+                logo.scaleToFit(150, 150);
+                logo.setAlignment(Element.ALIGN_CENTER);
+                document.add(logo);
+            } catch (Exception e) {
+                System.err.println("Gagal menambahkan logo: " + e.getMessage());
+            }
 
             // Header
             Paragraph toko = new Paragraph("PT TANI MAJU SEJAHTERA\nTaniKasir\n", fontTitle);
@@ -60,10 +57,8 @@ public class StrukPembelian {
             SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yy - HH:mm");
             String waktu = sdf.format(new Date());
             document.add(new Paragraph(waktu + " /Trx001/Nama kasir\n", fontNormal));
-
             document.add(new Paragraph("-----------------------------------------------------------------------------------", fontNormal));
 
-            // Format angka dengan titik sebagai pemisah ribuan
             DecimalFormat numberFormat = new DecimalFormat("#,###");
 
             // Tabel Item
@@ -80,22 +75,16 @@ public class StrukPembelian {
             for (String[] item : dataTransaksi) {
                 table.addCell(getStyledCell(item[0], fontNormal, Element.ALIGN_LEFT));
                 table.addCell(getStyledCell(String.valueOf((int) Double.parseDouble(item[2])), fontNormal, Element.ALIGN_CENTER));
-                String hargaPerPcsStr = item[1].replaceAll("[^0-9]", "");
-                int hargaPerPcs = hargaPerPcsStr.isEmpty() ? 0 : Integer.parseInt(hargaPerPcsStr);
-                String hargaFormatted = numberFormat.format(hargaPerPcs);
-                table.addCell(getStyledCell(hargaFormatted, fontNormal, Element.ALIGN_RIGHT));
-                int qty = (int) Double.parseDouble(item[2]);
-                int totalHarga = hargaPerPcs * qty;
-                String totalHargaFormatted = numberFormat.format(totalHarga);
-                table.addCell(getStyledCell(totalHargaFormatted, fontNormal, Element.ALIGN_RIGHT));
+                int hargaPerPcs = Integer.parseInt(item[1].replaceAll("[^0-9]", ""));
+                table.addCell(getStyledCell(numberFormat.format(hargaPerPcs), fontNormal, Element.ALIGN_RIGHT));
+                int totalHarga = hargaPerPcs * (int) Double.parseDouble(item[2]);
+                table.addCell(getStyledCell(numberFormat.format(totalHarga), fontNormal, Element.ALIGN_RIGHT));
             }
 
             document.add(table);
             document.add(new Paragraph("-----------------------------------------------------------------------------------", fontNormal));
 
             // Total Pembayaran
-            double kembalian = tunai - totalBayar;
-
             PdfPTable tableTotal = new PdfPTable(2);
             tableTotal.setWidthPercentage(100);
             tableTotal.setWidths(new float[]{4, 2});
@@ -124,21 +113,20 @@ public class StrukPembelian {
             document.add(footer);
 
             document.close();
-            JOptionPane.showMessageDialog(null, "Struk berhasil disimpan di: " + filePath, "Sukses", JOptionPane.INFORMATION_MESSAGE);
-            // **Langsung Membuka dan Mencetak Struk**
-            try {
-                File savedFile = new File(filePath);
-                if (Desktop.isDesktopSupported()) {
-                    Desktop desktop = Desktop.getDesktop();
-                    desktop.open(savedFile);  // Membuka file PDF setelah disimpan
-                    desktop.print(savedFile); // Mencetak file PDF secara otomatis
-                }
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(null, "Gagal membuka/mencetak struk: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                ex.printStackTrace();
+
+            // Simpan sementara ke file temp
+            File tempFile = File.createTempFile("Struk", ".pdf");
+            try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+                fos.write(outputStream.toByteArray());
             }
+
+            // Buka file PDF langsung untuk dicetak
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(tempFile);
+            }
+
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Gagal menyimpan struk: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Gagal menampilkan struk: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
         }
     }

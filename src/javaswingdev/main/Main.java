@@ -6,6 +6,7 @@ import javaswingdev.form.admin.Form_Dashboard_Admin;
 import javaswingdev.form.admin.Form_Transaksi_Admin;
 import javaswingdev.form.admin.Form_Data_Pupuk;
 import javaswingdev.login.Login;
+import javaswingdev.loginUI.main.LoginMain;
 import javaswingdev.form.user.Form_Dashboard_User;
 import javaswingdev.form.user.Form_Transaksi_User;
 import javaswingdev.form.Form_Dashboard;
@@ -15,6 +16,7 @@ import javaswingdev.form.admin.Data_Transaksi_Admin;
 import javaswingdev.form.admin.Form_Restock_Pupuk;
 import javaswingdev.form.admin.Form_Stock_Pupuk;
 import javaswingdev.form.admin.Form_User;
+import javaswingdev.form.admin.Data_bulanan;
 import javaswingdev.menu.EventMenuSelected;
 import javaswingdev.menu.ModelMenuItem;
 import javax.swing.JOptionPane;
@@ -62,7 +64,7 @@ public class Main extends javax.swing.JFrame {
             menu.addMenuItem(new ModelMenuItem(GoogleMaterialDesignIcon.STORAGE, "Stock", "Stock", "Restock")); // Tambahan menu Stock
 
             menu.addTitle("LAPORAN");
-            menu.addMenuItem(new ModelMenuItem(GoogleMaterialDesignIcon.ASSESSMENT, "Laporan"));
+            menu.addMenuItem(new ModelMenuItem(GoogleMaterialDesignIcon.ASSESSMENT, "Data_Laporan"));
 
         }
 
@@ -81,7 +83,7 @@ public class Main extends javax.swing.JFrame {
                         int confirm = JOptionPane.showConfirmDialog(null, "Anda yakin ingin logout?", "Konfirmasi Logout", JOptionPane.YES_NO_OPTION);
                         if (confirm == JOptionPane.YES_OPTION) {
                             setVisible(false); // Sembunyikan form utama
-                            Login loginForm = new Login();
+                            LoginMain loginForm = new LoginMain();
                             loginForm.setLocationRelativeTo(null); // Agar form Login muncul di tengah layar
                             loginForm.setVisible(true);
                             dispose(); // Hancurkan form utama setelah form Login tampil
@@ -108,14 +110,14 @@ public class Main extends javax.swing.JFrame {
                     } else if (index == 4 && indexSubMenu == 2) { // Restock dipindah ke submenu 2
                         showForm(new Form_Restock_Pupuk("Restock Pupuk"));
                     } else if (index == 5 && indexSubMenu == 0) { // Laporan turun ke index 5
-                        showForm(new Form_Empty("Laporan"));
+                        showForm(new Data_bulanan("Laporan"));
                     } else if (index == 6 && indexSubMenu == 0) { // Profile turun ke index 6
                         showForm(new Form_Empty("Profile"));
                     } else if (index == 7 && indexSubMenu == 0) { // Logout turun ke index 7
                         int confirm = JOptionPane.showConfirmDialog(null, "Anda yakin ingin logout?", "Konfirmasi Logout", JOptionPane.YES_NO_OPTION);
                         if (confirm == JOptionPane.YES_OPTION) {
                             setVisible(false); // Sembunyikan form utama
-                            Login loginForm = new Login();
+                            LoginMain loginForm = new LoginMain();
                             loginForm.setLocationRelativeTo(null); // Agar form Login muncul di tengah layar
                             loginForm.setVisible(true);
                             dispose(); // Hancurkan form utama setelah form Login tampil

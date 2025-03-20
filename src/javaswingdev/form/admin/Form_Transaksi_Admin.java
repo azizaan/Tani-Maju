@@ -436,6 +436,12 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
 
     private void BayarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BayarActionPerformed
         DefaultTableModel model = (DefaultTableModel) tableTransaksi.getModel();
+
+        // Cek apakah tabel kosong
+        if (model.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "Tidak ada transaksi yang diproses!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return; // Hentikan proses jika tabel kosong
+        }
         List<String[]> dataTransaksi = new ArrayList<>();
         int totalKeseluruhan = 0;
 
