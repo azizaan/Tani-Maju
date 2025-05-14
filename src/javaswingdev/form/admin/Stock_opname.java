@@ -449,34 +449,56 @@ public class Stock_opname extends javax.swing.JPanel {
         model.fireTableDataChanged();
 
         try {
-            Connection c = Koneksi.getKoneksi();
-            Statement s = c.createStatement();
+            Connection c = DriverManager.getConnection(
+                    "jdbc:mysql://localhost:3306/studicase_pupuk", "root", "");
 
-            // Query pencarian untuk tabel user
-            String sql = "SELECT * FROM data_pupuk WHERE "
-                    + "id_pupuk LIKE '%" + keyword + "%' OR "
-                    + "nama_pupuk LIKE '%" + keyword + "%' OR "
-                    + "harga_pupuk LIKE '%" + keyword + "%' OR "
-                    + "kode_pupuk LIKE '%" + keyword + "%'";
-            ResultSet r = s.executeQuery(sql);
+            String sql = "SELECT dp.id_pupuk, dp.nama_pupuk, dp.harga_pupuk, "
+                    + "do.stock_sistem, do.stock_fisik, so.tanggal_opname, "
+                    + "(do.stock_fisik - do.stock_sistem) AS selisih, so.keterangan "
+                    + "FROM stock_opname so "
+                    + "JOIN detail_opname do ON so.id_opname = do.id_opname "
+                    + "JOIN data_pupuk dp ON do.id_pupuk = dp.id_pupuk "
+                    + "WHERE dp.id_pupuk LIKE ? OR dp.nama_pupuk LIKE ? OR dp.harga_pupuk LIKE ? "
+                    + "OR do.stock_sistem LIKE ? OR do.stock_fisik LIKE ? "
+                    + "OR so.tanggal_opname LIKE ? OR so.keterangan LIKE ? "
+                    + "ORDER BY so.tanggal_opname DESC";
 
-            while (r.next()) {
-                Object[] o = new Object[4]; // Sesuaikan ukuran array menjadi 4 (tanpa password)
-                o[0] = r.getString("id_pupuk");
-                o[1] = r.getString("nama_pupuk");
-                o[2] = r.getString("harga_pupuk");
-                o[3] = r.getString("kode_pupuk");
+            PreparedStatement ps = c.prepareStatement(sql);
 
-                model.addRow(o);
+            String searchKeyword = "%" + keyword + "%";
+            for (int i = 1; i <= 7; i++) {
+                ps.setString(i, searchKeyword);
             }
+
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                int sistem = rs.getInt("stock_sistem");
+                int fisik = rs.getInt("stock_fisik");
+                int selisih = fisik - sistem;
+
+                model.addRow(new Object[]{
+                    rs.getString("id_pupuk"),
+                    rs.getString("nama_pupuk"),
+                    rs.getString("harga_pupuk"),
+                    sistem,
+                    fisik,
+                    rs.getDate("tanggal_opname"),
+                    selisih,
+                    rs.getString("keterangan")
+                });
+            }
+
             if (model.getRowCount() == 0) {
-                // Menambah baris dengan pesan "Tidak ada data yang relevan"
-                table.addRow(new Object[]{"Tidak ada data yang relevan", "", "", ""});
+                model.addRow(new Object[]{"Tidak ada data yang relevan", "", "", "", "", "", "", ""});
             }
-            r.close();
-            s.close();
+
+            rs.close();
+            ps.close();
+            c.close();
+
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Gagal cari data: " + e.getMessage());
             e.printStackTrace();
         }
     }
