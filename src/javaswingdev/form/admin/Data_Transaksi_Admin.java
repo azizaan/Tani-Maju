@@ -4,6 +4,7 @@ import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
@@ -71,6 +72,14 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
 
         loadData();
 //        table.setEnabled(false);
+
+        btnCetak.setText("Cetak Transaksi");
+        btnCetak.setColor(new Color(47, 128, 237)); // #2F80ED
+        btnCetak.setColorOver(new Color(26, 106, 211)); // Lebih gelap saat hover
+        btnCetak.setColorClick(new Color(15, 90, 190)); // Saat klik
+        btnCetak.setBorderColor(new Color(47, 128, 237));
+        btnCetak.setForeground(Color.WHITE);
+        btnCetak.setRadius(20);
     }
 
     private DefaultTableModel model;
@@ -84,10 +93,7 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
             Statement s = c.createStatement();
 
             // Query hanya untuk data transaksi tanpa pupuk
-            String sql = "SELECT t.transaksi_id, u.full_name AS nama_kasir, "
-                    + "t.nama_pembeli, t.total_harga, t.diskon "
-                    + "FROM transaksi t "
-                    + "JOIN user u ON t.user_id = u.user_id";
+            String sql = "SELECT * FROM v_data_transaksi";
 
             ResultSet r = s.executeQuery(sql);
 
@@ -125,7 +131,7 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
         table = new javaswingdev.swing.table.Table();
         txtcari = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
-        btnCetak = new javax.swing.JButton();
+        btnCetak = new button.MyButton();
 
         setOpaque(false);
 
@@ -169,6 +175,7 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
         jLabel1.setText("Cari Data");
 
         btnCetak.setText("Cetak Transaksi");
+        btnCetak.setBorderPainted(false);
         btnCetak.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnCetakActionPerformed(evt);
@@ -187,7 +194,7 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(lb)
                             .addGroup(layout.createSequentialGroup()
-                                .addComponent(btnCetak)
+                                .addComponent(btnCetak, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                 .addComponent(jLabel1)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -203,7 +210,7 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(txtcari, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel1)
-                    .addComponent(btnCetak))
+                    .addComponent(btnCetak, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -510,7 +517,7 @@ public class Data_Transaksi_Admin extends javax.swing.JPanel {
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btnCetak;
+    private button.MyButton btnCetak;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JLabel lb;

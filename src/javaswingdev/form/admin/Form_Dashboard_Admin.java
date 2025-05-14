@@ -1,8 +1,20 @@
 package javaswingdev.form.admin;
 
+import com.raven.chart.ModelChart;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javaswingdev.form.*;
+import javaswingdev.main.Main;
+import java.time.LocalDateTime;
 import javaswingdev.card.ModelCard;
 import javaswingdev.form.Koneksi;
 import java.sql.Connection;
@@ -17,15 +29,37 @@ import java.util.UUID;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
 import java.sql.PreparedStatement; // Import PreparedStatement
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import javaswingdev.login.SessionManager;
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.JOptionPane;
+import raven.alerts.MessageAlerts;
+import raven.popup.GlassPanePopup;
+import raven.popup.component.PopupCallbackAction;
+import raven.popup.component.PopupController;
+import raven.tabbed.TabbedForm;
+import raven.tabbed.WindowsTabbed;
+import raven.toast.Notifications;
 
 public class Form_Dashboard_Admin extends javax.swing.JPanel {
 
     public Form_Dashboard_Admin() {
         initComponents();
         init();
+//        GlassPanePopup.install(this);
         this.setVisible(true); // Pastikan form terlihat
         loadDataTransaksi();
         loadDataKeuntungan();
@@ -33,17 +67,15 @@ public class Form_Dashboard_Admin extends javax.swing.JPanel {
         updateWaktu(); // Set waktu pertama kali
         startTimer();
         SimpleDateFormat sdfKosong = new SimpleDateFormat("--_--_---- --:--:--");
-        txt_check_in.setText(sdfKosong.format(new Date(0)));
-        txt_check_out.setText(sdfKosong.format(new Date(0)));
-        loadAbsensi();
-        loadAbsensiTable();
 //        table.addColumn("id absen");
+        List<Map<String, String>> notifikasiList = ambilNotifikasiDariDatabase();
+        int jumlahNotifikasi = notifikasiList.size();
+        badgeButton1.setText(String.valueOf(jumlahNotifikasi));
     }
 
     private void updateWaktu() {
         SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
         String waktuSekarang = sdf.format(new Date()); // Ambil waktu saat ini
-        txt_hari_ini.setText("Waktu Sekarang : " + waktuSekarang); // Set ke JLabel
     }
 
     private void startTimer() {
@@ -121,7 +153,7 @@ public class Form_Dashboard_Admin extends javax.swing.JPanel {
                 String keuntunganFormatted = kursIndonesia.format(totalKeuntungan);
 
                 // Set data ke card2 dengan format Rupiah
-                card2.setData(new ModelCard(null, null, null, keuntunganFormatted, "Keuntungan Bulan Ini"));
+                card2.setData(new ModelCard(null, null, null, keuntunganFormatted, "Pemasukan Bulan Ini"));
             }
 
             rs.close();
@@ -141,22 +173,22 @@ public class Form_Dashboard_Admin extends javax.swing.JPanel {
             int bulan = now.getMonthValue();
             int tahun = now.getYear();
 
-            // Query untuk menghitung total pengeluaran per bulan berdasarkan restock
-            String sql = "SELECT SUM(CAST(d.jumlah_beli AS UNSIGNED) * CAST(p.harga_pupuk AS UNSIGNED)) AS total_pengeluaran "
-                    + "FROM transaksi_detail d "
+            // Query menghitung total pengeluaran dari restock pupuk bulan ini
+            String sql = "SELECT SUM(d.jumlah * CAST(p.harga_pupuk AS UNSIGNED)) AS total_pengeluaran "
+                    + "FROM restock_pupuk r "
+                    + "JOIN detail_restock d ON r.id_restock = d.id_restock "
                     + "JOIN data_pupuk p ON d.id_pupuk = p.id_pupuk "
-                    + "JOIN transaksi t ON d.transaksi_id = t.transaksi_id "
-                    + "WHERE MONTH(t.waktu_transaksi) = " + bulan + " AND YEAR(t.waktu_transaksi) = " + tahun;
+                    + "WHERE MONTH(r.tgl_restock) = " + bulan + " AND YEAR(r.tgl_restock) = " + tahun;
 
             ResultSet rs = stmt.executeQuery(sql);
 
             if (rs.next()) {
                 double pengeluaran = rs.getDouble("total_pengeluaran");
 
-                // Format ke Rupiah tanpa ",0" di belakang
+                // Format ke Rupiah
                 String formattedPengeluaran = formatRupiah(pengeluaran);
 
-                // Mengatur data untuk card2 dengan pengeluaran bulanan
+                // Menampilkan hasil ke card3
                 card3.setData(new ModelCard(null, null, null, formattedPengeluaran, "Pengeluaran Bulan Ini"));
             }
 
@@ -173,10 +205,62 @@ public class Form_Dashboard_Admin extends javax.swing.JPanel {
         return format.format(angka).replace(",00", ""); // Menghapus ,00 di belakang
     }
 
+    private void loadChartData() {
+        try {
+            Connection con = Koneksi.getKoneksi();
+            Statement stmt = con.createStatement();
+
+            // Query gabungan untuk pemasukan dan pengeluaran per bulan di tahun ini
+            String sql = "SELECT MONTH(t.waktu_transaksi) AS bulan, "
+                    + "SUM(t.total_harga) AS total_pemasukan, "
+                    + "SUM(CAST(d.jumlah_beli AS UNSIGNED) * CAST(p.harga_pupuk AS UNSIGNED)) AS total_pengeluaran "
+                    + "FROM transaksi t "
+                    + "LEFT JOIN transaksi_detail d ON t.transaksi_id = d.transaksi_id "
+                    + "LEFT JOIN data_pupuk p ON d.id_pupuk = p.id_pupuk "
+                    + "WHERE YEAR(t.waktu_transaksi) = YEAR(CURDATE()) "
+                    + "GROUP BY MONTH(t.waktu_transaksi)";
+
+            ResultSet rs = stmt.executeQuery(sql);
+
+            // Reset legend & data chart
+            chart.clear();  // Tambahkan fungsi ini jika ada, atau buat manual
+            chart.addLegend("Pemasukan", new Color(12, 84, 175), new Color(0, 108, 247));
+            chart.addLegend("Pengeluaran", new Color(54, 4, 143), new Color(104, 49, 200));
+
+            // Inisialisasi array data kosong untuk bulan 1 sampai 12
+            double[] pemasukanPerBulan = new double[12];
+            double[] pengeluaranPerBulan = new double[12];
+
+            while (rs.next()) {
+                int bulan = rs.getInt("bulan") - 1; // index mulai dari 0
+                pemasukanPerBulan[bulan] = rs.getDouble("total_pemasukan");
+                pengeluaranPerBulan[bulan] = rs.getDouble("total_pengeluaran");
+            }
+
+            // Tambahkan data ke chart per bulan
+            String[] namaBulan = {
+                "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+            };
+
+            for (int i = 0; i < 12; i++) {
+                // Hanya tampilkan bulan yang memiliki data (bisa diubah sesuai kebutuhan)
+                if (pemasukanPerBulan[i] > 0 || pengeluaranPerBulan[i] > 0) {
+                    chart.addData(new ModelChart(namaBulan[i],
+                            new double[]{pemasukanPerBulan[i], pengeluaranPerBulan[i]}));
+                }
+            }
+
+            chart.start();
+            rs.close();
+            stmt.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void init() {
-        txt_check_in.setHorizontalAlignment(SwingConstants.CENTER);
-        txt_check_out.setHorizontalAlignment(SwingConstants.CENTER);
-        txt_hari_ini.setHorizontalAlignment(SwingConstants.CENTER);
+        loadChartData();
     }
 
     @SuppressWarnings("unchecked")
@@ -187,15 +271,8 @@ public class Form_Dashboard_Admin extends javax.swing.JPanel {
         card2 = new javaswingdev.card.Card();
         card3 = new javaswingdev.card.Card();
         roundPanel1 = new javaswingdev.swing.RoundPanel();
-        jScrollPane1 = new javax.swing.JScrollPane();
-        table = new javaswingdev.swing.table.Table();
-        txt_hari_ini = new javax.swing.JLabel();
-        txt_check_in = new javax.swing.JLabel();
-        txt_check_out = new javax.swing.JLabel();
-        btn_in = new javax.swing.JButton();
-        btn_out = new javax.swing.JButton();
-        TXT1 = new javax.swing.JLabel();
-        TXT2 = new javax.swing.JLabel();
+        chart = new com.raven.chart.Chart();
+        badgeButton1 = new notibutton.BadgeButton();
 
         setOpaque(false);
 
@@ -211,129 +288,58 @@ public class Form_Dashboard_Admin extends javax.swing.JPanel {
         roundPanel1.setBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5));
         roundPanel1.setRound(10);
 
-        table.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-
-            },
-            new String [] {
-                "Nama", "Check in", "Check out"
-            }
-        ) {
-            boolean[] canEdit = new boolean [] {
-                false, false, false
-            };
-
-            public boolean isCellEditable(int rowIndex, int columnIndex) {
-                return canEdit [columnIndex];
-            }
-        });
-        jScrollPane1.setViewportView(table);
-
-        txt_hari_ini.setFont(new java.awt.Font("Segoe UI", 0, 18)); // NOI18N
-        txt_hari_ini.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        txt_hari_ini.setText("TXTHARIINI");
-        txt_hari_ini.setToolTipText("");
-        txt_hari_ini.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-
-        txt_check_in.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
-        txt_check_in.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        txt_check_in.setText("TXTCHECKIN");
-        txt_check_in.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
-
-        txt_check_out.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
-        txt_check_out.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        txt_check_out.setText("TXTCHECKOUT");
-        txt_check_out.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
-
-        btn_in.setText("Check In");
-        btn_in.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btn_inActionPerformed(evt);
-            }
-        });
-
-        btn_out.setText("Check Out");
-        btn_out.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btn_outActionPerformed(evt);
-            }
-        });
-
-        TXT1.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
-        TXT1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        TXT1.setText("WAKTU CHECK IN :");
-        TXT1.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
-
-        TXT2.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
-        TXT2.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        TXT2.setText("WAKTU CHECK OUT :");
-        TXT2.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
-
         javax.swing.GroupLayout roundPanel1Layout = new javax.swing.GroupLayout(roundPanel1);
         roundPanel1.setLayout(roundPanel1Layout);
         roundPanel1Layout.setHorizontalGroup(
             roundPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(roundPanel1Layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(roundPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane1)
-                    .addGroup(roundPanel1Layout.createSequentialGroup()
-                        .addGroup(roundPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(txt_hari_ini)
-                            .addGroup(roundPanel1Layout.createSequentialGroup()
-                                .addGroup(roundPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(TXT2)
-                                    .addComponent(TXT1))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(roundPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(txt_check_in)
-                                    .addComponent(txt_check_out))
-                                .addGap(76, 76, 76)
-                                .addGroup(roundPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(btn_in, javax.swing.GroupLayout.PREFERRED_SIZE, 88, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(btn_out))))
-                        .addGap(0, 0, Short.MAX_VALUE)))
+                .addComponent(chart, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
         roundPanel1Layout.setVerticalGroup(
             roundPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(roundPanel1Layout.createSequentialGroup()
-                .addComponent(txt_hari_ini)
-                .addGap(18, 18, 18)
-                .addGroup(roundPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(txt_check_in)
-                    .addComponent(btn_in)
-                    .addComponent(TXT1))
-                .addGap(18, 18, 18)
-                .addGroup(roundPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(TXT2)
-                    .addComponent(txt_check_out)
-                    .addComponent(btn_out))
-                .addGap(23, 23, 23)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 326, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, roundPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(chart, javax.swing.GroupLayout.DEFAULT_SIZE, 432, Short.MAX_VALUE)
+                .addContainerGap())
         );
+
+        badgeButton1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/notibutton/icon.png"))); // NOI18N
+        badgeButton1.setText("0");
+        badgeButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                badgeButton1ActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addGap(30, 30, 30)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(roundPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(card1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGap(30, 30, 30)
-                        .addComponent(card2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addGap(30, 30, 30)
-                        .addComponent(card3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(roundPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(card1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGap(30, 30, 30)
+                                .addComponent(card2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGap(30, 30, 30)
+                                .addComponent(card3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                    .addGroup(layout.createSequentialGroup()
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(badgeButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addGap(30, 30, 30))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(30, 30, 30)
+                .addContainerGap()
+                .addComponent(badgeButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 44, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(card3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(card2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -344,158 +350,157 @@ public class Form_Dashboard_Admin extends javax.swing.JPanel {
         );
     }// </editor-fold>//GEN-END:initComponents
 
-    private void loadAbsensi() {
+    private JPopupMenu notificationPopup;
+    private boolean isPopupVisible = false;
+
+    private List<Map<String, String>> ambilNotifikasiDariDatabase() {
+        List<Map<String, String>> daftarNotifikasi = new ArrayList<>();
         try {
             Connection con = Koneksi.getKoneksi();
-            String UserId = SessionManager.currentUserIDKasir;
-
-            // Format tanggal hari ini
-            SimpleDateFormat dateOnlyFormat = new SimpleDateFormat("yyyy-MM-dd");
-            String todayDate = dateOnlyFormat.format(new Date());
-
-            // Ambil data check-in dan check-out user untuk hari ini
-            String sql = "SELECT check_in, check_out FROM absensi_pegawai WHERE user_id = ? AND DATE(check_in) = ?";
-            PreparedStatement ps = con.prepareStatement(sql);
-            ps.setString(1, UserId);
-            ps.setString(2, todayDate);
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) { // Jika ada data check-in hari ini
-                String waktuCheckIn = rs.getString("check_in");
-                txt_check_in.setText(waktuCheckIn);
-
-                String waktuCheckOut = rs.getString("check_out");
-                if (waktuCheckOut != null) {
-                    txt_check_out.setText(waktuCheckOut);
-                } else {
-                    txt_check_out.setText(""); // Jika belum check-out, kosongkan field
-                }
-            } else {
-                // Jika belum check-in hari ini, kosongkan semua field
-                txt_check_in.setText("");
-                txt_check_out.setText("");
-            }
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Error saat memuat data absensi: " + e.getMessage());
-        }
-    }
-
-    private void loadAbsensiTable() {
-        try {
-            Connection con = Koneksi.getKoneksi();
-            String UserId = SessionManager.currentUserIDKasir;
-
-            // Query dengan ORDER BY ASC agar hari sebelum hari ini berada di atas
-            String sql = "SELECT u.full_name, a.check_in, a.check_out "
-                    + "FROM absensi_pegawai a "
-                    + "JOIN user u ON a.user_id = u.user_id "
-                    + "WHERE u.user_id = ? "
-                    + "ORDER BY a.check_in DESC";
+            String sql = "SELECT n.id_notifikasi, p.nama_pupuk, n.tanggal_notifikasi, n.jumlah_stock "
+                    + "FROM notifikasi n "
+                    + "JOIN data_pupuk p ON n.id_pupuk = p.id_pupuk "
+                    + "WHERE n.status_notifikasi = '1' "
+                    + "ORDER BY n.tanggal_notifikasi DESC";
 
             PreparedStatement ps = con.prepareStatement(sql);
-            ps.setString(1, UserId);
             ResultSet rs = ps.executeQuery();
-
-            // Model untuk tabel
-            DefaultTableModel model = (DefaultTableModel) table.getModel();
-            model.setRowCount(0); // Kosongkan tabel sebelum diisi ulang
-
             while (rs.next()) {
-                String namaPegawai = rs.getString("full_name");
-                String waktuCheckIn = rs.getString("check_in");
-                String waktuCheckOut = rs.getString("check_out");
+                Map<String, String> map = new HashMap<>();
+                map.put("id", rs.getString("id_notifikasi"));
+                map.put("nama", rs.getString("nama_pupuk"));
+                map.put("tanggal", rs.getString("tanggal_notifikasi"));
+                map.put("stok", rs.getString("jumlah_stock"));  // gunakan nilai dari notifikasi
 
-                // Tambahkan data ke tabel
-                model.addRow(new Object[]{namaPegawai, waktuCheckIn, waktuCheckOut});
+                daftarNotifikasi.add(map);
             }
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Error saat memuat data ke tabel: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return daftarNotifikasi;
+    }
+
+    private void ubahStatusNotifikasi(String idNotifikasi) {
+        try {
+            Connection con = Koneksi.getKoneksi();
+            String sql = "UPDATE notifikasi SET status_notifikasi = 0 WHERE id_notifikasi = ?";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setString(1, idNotifikasi);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
+//     private static Main main;
+    private void badgeButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_badgeButton1ActionPerformed
+        List<Map<String, String>> notifikasiList = ambilNotifikasiDariDatabase();
+        int jumlahNotifikasi = notifikasiList.size();
 
-    private void btn_inActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_inActionPerformed
-        try {
-            Connection con = Koneksi.getKoneksi();
-            String UserId = SessionManager.currentUserIDKasir;
-
-            // Cek apakah user sudah check-in hari ini
-            SimpleDateFormat dateOnlyFormat = new SimpleDateFormat("yyyy-MM-dd");
-            String todayDate = dateOnlyFormat.format(new Date());
-            String sqlCheck = "SELECT check_in FROM absensi_pegawai WHERE user_id = ? AND DATE(check_in) = ?";
- 
-            PreparedStatement psCheck = con.prepareStatement(sqlCheck);
-            psCheck.setString(1, UserId);
-            psCheck.setString(2, todayDate);
-            ResultSet rs = psCheck.executeQuery();
-
-            if (rs.next()) { // Jika sudah check-in hari ini
-                String waktuCheckIn = rs.getString("check_in");
-                txt_check_in.setText(waktuCheckIn);
-                JOptionPane.showMessageDialog(null, "Anda sudah check-in hari ini!\nWaktu Check-in: " + waktuCheckIn);
-                return;
-            }
-
-            // Jika belum check-in, lakukan check-in
-            String idAbsen = UUID.randomUUID().toString();
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            String waktuCheckIn = sdf.format(new Date());
-
-            String sqlInsert = "INSERT INTO absensi_pegawai (id_absen, user_id, check_in) VALUES (?, ?, ?)";
-            PreparedStatement psInsert = con.prepareStatement(sqlInsert);
-            psInsert.setString(1, idAbsen);
-            psInsert.setString(2, UserId);
-            psInsert.setString(3, waktuCheckIn);
-            psInsert.executeUpdate();
-
-            txt_check_in.setText(waktuCheckIn);
-            loadAbsensiTable();
-            JOptionPane.showMessageDialog(null, "Check-in berhasil!");
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Error saat check-in: " + e.getMessage());
-        }
-    }//GEN-LAST:event_btn_inActionPerformed
-
-    private void btn_outActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_outActionPerformed
-        try {
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            String waktuCheckOut = sdf.format(new Date());
-            String UserId = SessionManager.currentUserIDKasir;
-            Connection con = Koneksi.getKoneksi();
-
-            // Update check-out berdasarkan user_id untuk data yang belum check-out
-            String sql = "UPDATE absensi_pegawai SET check_out = ? WHERE user_id = ? AND check_out IS NULL";
-            PreparedStatement ps = con.prepareStatement(sql);
-            ps.setString(1, waktuCheckOut);
-            ps.setString(2, UserId);
-            int rowsUpdated = ps.executeUpdate();
-
-            if (rowsUpdated > 0) {
-                txt_check_out.setText(waktuCheckOut);
-                JOptionPane.showMessageDialog(null, "Check-out berhasil!");
-            } else {
-                JOptionPane.showMessageDialog(null, "Error: Anda belum check-in!");
-            }
-            loadAbsensiTable();
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Error saat check-out: " + e.getMessage());
+        if (notificationPopup != null) {
+            notificationPopup.setVisible(false);
+            isPopupVisible = false;
         }
 
-    }//GEN-LAST:event_btn_outActionPerformed
+        notificationPopup = new JPopupMenu();
+        notificationPopup.setLayout(new BorderLayout());
+
+        JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        headerPanel.setBackground(new Color(240, 240, 240));
+        JLabel title = new JLabel("🔔 Anda memiliki " + jumlahNotifikasi + " notifikasi");
+        title.setFont(new Font("SansSerif", Font.BOLD, 13));
+        headerPanel.add(title);
+
+        JPanel listPanel = new JPanel();
+        listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
+        listPanel.setBackground(Color.WHITE);
+
+        for (Map<String, String> notif : notifikasiList) {
+            String idNotifikasi = notif.get("id");
+            String namaPupuk = notif.get("nama");
+            String tanggal = notif.get("tanggal"); // format: "2025-05-09 14:23:45"
+            String stock = notif.get("stok");
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            LocalDateTime waktuNotifikasi = LocalDateTime.parse(tanggal, formatter);
+            LocalDateTime sekarang = LocalDateTime.now();
+
+            long selisihHari = ChronoUnit.DAYS.between(waktuNotifikasi.toLocalDate(), sekarang.toLocalDate());
+            String jamMenit = waktuNotifikasi.format(DateTimeFormatter.ofPattern("HH:mm"));
+
+            String waktuRelatif = (selisihHari == 0 ? "hari ini" : selisihHari + " hari lalu") + ", " + jamMenit;
+
+            JPanel notifPanel = new JPanel();
+            notifPanel.setLayout(new BoxLayout(notifPanel, BoxLayout.Y_AXIS));
+            notifPanel.setBackground(Color.WHITE);
+            notifPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY));
+            notifPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            notifPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+            notifPanel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+            JLabel labelUtama = new JLabel("Stok " + namaPupuk + " tersisa " + stock + " unit");
+            labelUtama.setFont(new Font("SansSerif", Font.PLAIN, 13));
+
+            JLabel labelWaktu = new JLabel(waktuRelatif);
+            labelWaktu.setFont(new Font("SansSerif", Font.PLAIN, 10));
+            labelWaktu.setForeground(Color.GRAY);
+
+            notifPanel.add(labelUtama);
+            notifPanel.add(labelWaktu);
+
+            notifPanel.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    ubahStatusNotifikasi(idNotifikasi);
+                    notificationPopup.setVisible(false);
+                    isPopupVisible = false;
+                    Main.getMain().showForm(new Form_Stock_Pupuk("Stock"));
+                }
+
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    notifPanel.setBackground(new Color(230, 230, 250));
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    notifPanel.setBackground(Color.WHITE);
+                }
+            });
+
+            listPanel.add(notifPanel);
+        }
+
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
+        mainPanel.add(listPanel, BorderLayout.CENTER);
+
+        JScrollPane scrollPane = new JScrollPane(mainPanel);
+        scrollPane.setPreferredSize(new Dimension(270, 200));
+        scrollPane.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        scrollPane.getVerticalScrollBar().setUnitIncrement(10);
+
+        notificationPopup.add(scrollPane, BorderLayout.CENTER);
+
+        if (!isPopupVisible) {
+            int x = badgeButton1.getWidth() - 270;
+            int y = badgeButton1.getHeight();
+            notificationPopup.show(badgeButton1, x, y);
+            isPopupVisible = true;
+        } else {
+            notificationPopup.setVisible(false);
+            isPopupVisible = false;
+        }
+
+    }//GEN-LAST:event_badgeButton1ActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JLabel TXT1;
-    private javax.swing.JLabel TXT2;
-    private javax.swing.JButton btn_in;
-    private javax.swing.JButton btn_out;
+    private notibutton.BadgeButton badgeButton1;
     private javaswingdev.card.Card card1;
     private javaswingdev.card.Card card2;
     private javaswingdev.card.Card card3;
-    private javax.swing.JScrollPane jScrollPane1;
+    private com.raven.chart.Chart chart;
     private javaswingdev.swing.RoundPanel roundPanel1;
-    private javaswingdev.swing.table.Table table;
-    private javax.swing.JLabel txt_check_in;
-    private javax.swing.JLabel txt_check_out;
-    private javax.swing.JLabel txt_hari_ini;
     // End of variables declaration//GEN-END:variables
 }

@@ -114,10 +114,12 @@
                                       <Component id="txt_check_out" alignment="0" min="-2" max="-2" attributes="0"/>
                                   </Group>
                                   <EmptySpace min="-2" pref="76" max="-2" attributes="0"/>
-                                  <Group type="103" groupAlignment="0" attributes="0">
-                                      <Component id="btn_in" min="-2" pref="88" max="-2" attributes="0"/>
-                                      <Component id="btn_out" min="-2" max="-2" attributes="0"/>
+                                  <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                                      <Component id="btn_in" max="32767" attributes="0"/>
+                                      <Component id="btn_out" max="32767" attributes="0"/>
                                   </Group>
+                                  <EmptySpace max="-2" attributes="0"/>
+                                  <Component id="btn_izin" min="-2" pref="96" max="-2" attributes="0"/>
                               </Group>
                           </Group>
                           <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
@@ -136,6 +138,7 @@
                       <Component id="txt_check_in" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="btn_in" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="TXT1" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="btn_izin" alignment="3" min="-2" max="-2" attributes="0"/>
                   </Group>
                   <EmptySpace type="separate" max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="3" attributes="0">
@@ -259,6 +262,14 @@
             <Property name="text" type="java.lang.String" value="WAKTU CHECK OUT :"/>
             <Property name="horizontalTextPosition" type="int" value="4"/>
           </Properties>
+        </Component>
+        <Component class="javax.swing.JButton" name="btn_izin">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Izin"/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btn_izinActionPerformed"/>
+          </Events>
         </Component>
       </SubComponents>
     </Container>

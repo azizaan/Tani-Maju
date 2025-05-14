@@ -11,6 +11,8 @@ package javaswingdev.form.admin;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
 import java.awt.Desktop;
+import java.awt.Robot;
+import java.awt.event.KeyEvent;
 import javax.swing.*;
 import java.io.File;
 import java.io.*;
@@ -19,10 +21,11 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import javaswingdev.login.SessionManager;
 
 public class StrukPembelian {
 
-    public static void simpanStrukPDF(List<String[]> dataTransaksi, String pelanggan, double totalBayar, double tunai, int diskon, double subtotal) {
+    public static void simpanStrukPDF(String transaksiID, List<String[]> dataTransaksi, String pelanggan, double totalBayar, double tunai, int diskon, double subtotal) {
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             Document document = new Document(PageSize.A6);
@@ -44,7 +47,7 @@ public class StrukPembelian {
             }
 
             // Header
-            Paragraph toko = new Paragraph("PT TANI MAJU SEJAHTERA\nTaniKasir\n", fontTitle);
+            Paragraph toko = new Paragraph("PT TANI MAJU SEJAHTERA", fontTitle);
             toko.setAlignment(Element.ALIGN_CENTER);
             document.add(toko);
 
@@ -53,11 +56,37 @@ public class StrukPembelian {
             document.add(alamat);
             document.add(new Paragraph("-----------------------------------------------------------------------------------", fontNormal));
 
-            // Waktu Transaksi
             SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yy - HH:mm");
             String waktu = sdf.format(new Date());
-            document.add(new Paragraph(waktu + " /Trx001/Nama kasir\n", fontNormal));
-            document.add(new Paragraph("-----------------------------------------------------------------------------------", fontNormal));
+            String namaKasir = SessionManager.currentName;
+            // Informasi transaksi dua kolom
+            PdfPTable infoTable = new PdfPTable(2);
+            infoTable.setWidthPercentage(100);
+            infoTable.setWidths(new float[]{1f, 1f});
+            infoTable.setSpacingBefore(2f); // sebelumnya 10f
+            infoTable.setSpacingAfter(2f);  // sebelumnya 5f
+
+// Baris 1: Date - Cashier
+            infoTable.addCell(createInfoCell("Tanggal & Waktu", Element.ALIGN_LEFT, fontNormal));
+            infoTable.addCell(createInfoCell("Nama Kasir", Element.ALIGN_RIGHT, fontNormal));
+
+            infoTable.addCell(createInfoCell(waktu, Element.ALIGN_LEFT, fontBold));
+            infoTable.addCell(createInfoCell(namaKasir, Element.ALIGN_RIGHT, fontBold));
+
+// Baris 2: Trx ID - Customer name
+            infoTable.addCell(createInfoCell("Transaksi ID", Element.ALIGN_LEFT, fontNormal));
+            infoTable.addCell(createInfoCell("Nama Pelanggan", Element.ALIGN_RIGHT, fontNormal));
+
+            infoTable.addCell(createInfoCell(transaksiID, Element.ALIGN_LEFT, fontBold));
+            infoTable.addCell(createInfoCell(pelanggan, Element.ALIGN_RIGHT, fontBold));
+
+            document.add(infoTable);
+
+            Paragraph garis = new Paragraph("-----------------------------------------------------------------------------------", fontNormal);
+            garis.setSpacingBefore(0f); // Tambahan untuk mengurangi jarak atas
+            garis.setSpacingAfter(0f);  // Tambahan untuk mengurangi jarak bawah
+            garis.setAlignment(Element.ALIGN_CENTER);
+            document.add(garis);
 
             DecimalFormat numberFormat = new DecimalFormat("#,###");
 
@@ -123,12 +152,26 @@ public class StrukPembelian {
             // Buka file PDF langsung untuk dicetak
             if (Desktop.isDesktopSupported()) {
                 Desktop.getDesktop().open(tempFile);
+                Thread.sleep(2000); // tunggu PDF terbuka
+
+                Robot robot = new Robot();
+                robot.keyPress(KeyEvent.VK_CONTROL);
+                robot.keyPress(KeyEvent.VK_P);
+                robot.keyRelease(KeyEvent.VK_P);
+                robot.keyRelease(KeyEvent.VK_CONTROL);
             }
 
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Gagal menampilkan struk: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
         }
+    }
+
+    private static PdfPCell createInfoCell(String text, int alignment, Font font) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, font));
+        cell.setHorizontalAlignment(alignment);
+        cell.setBorder(Rectangle.NO_BORDER);
+        return cell;
     }
 
     private static PdfPCell getStyledCell(String text, Font font, int alignment) {

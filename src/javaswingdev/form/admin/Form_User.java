@@ -1,5 +1,6 @@
 package javaswingdev.form.admin;
 
+import java.awt.Color;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -39,6 +40,32 @@ public class Form_User extends javax.swing.JPanel {
         model.addColumn("Type");
 
         loadData();
+
+        btn_tambah.setText("+ Add");
+        btn_tambah.setColor(new Color(47, 128, 237)); // #2F80ED
+        btn_tambah.setColorOver(new Color(26, 106, 211)); // Lebih gelap saat hover
+        btn_tambah.setColorClick(new Color(15, 90, 190)); // Saat klik
+        btn_tambah.setBorderColor(new Color(47, 128, 237));
+        btn_tambah.setForeground(Color.WHITE);
+        btn_tambah.setRadius(20);
+
+// Tombol EDIT
+        btn_edit.setText("✎ Edit"); // Bisa pakai unicode pensil atau icon nanti
+        btn_edit.setColor(Color.WHITE);
+        btn_edit.setColorOver(new Color(245, 245, 245)); // hover abu muda
+        btn_edit.setColorClick(new Color(230, 230, 230));
+        btn_edit.setBorderColor(new Color(189, 189, 189)); // #BDBDBD
+        btn_edit.setForeground(new Color(79, 79, 79)); // #4F4F4F
+        btn_edit.setRadius(20);
+
+// Tombol DELETE
+        btn_hapus.setText("🗑 Delete"); // Bisa pakai unicode icon, atau icon image nanti
+        btn_hapus.setColor(Color.WHITE);
+        btn_hapus.setColorOver(new Color(255, 230, 230)); // hover merah muda
+        btn_hapus.setColorClick(new Color(255, 200, 200));
+        btn_hapus.setBorderColor(new Color(234, 84, 85)); // Mirip merahnya
+        btn_hapus.setForeground(new Color(235, 87, 87)); // #EB5757
+        btn_hapus.setRadius(20);
 //        table.setEnabled(false);
     }
 
@@ -77,13 +104,13 @@ public class Form_User extends javax.swing.JPanel {
     private void initComponents() {
 
         lb = new javax.swing.JLabel();
-        btnTambah = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         table = new javaswingdev.swing.table.Table();
-        btnEdit = new javax.swing.JButton();
-        btnHapus = new javax.swing.JButton();
         txtcari = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
+        btn_tambah = new button.MyButton();
+        btn_edit = new button.MyButton();
+        btn_hapus = new button.MyButton();
 
         setOpaque(false);
 
@@ -91,13 +118,6 @@ public class Form_User extends javax.swing.JPanel {
         lb.setForeground(new java.awt.Color(125, 125, 125));
         lb.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         lb.setText("Data User");
-
-        btnTambah.setText("Tambah");
-        btnTambah.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnTambahActionPerformed(evt);
-            }
-        });
 
         table.setForeground(new java.awt.Color(0, 0, 255));
         table.setModel(new javax.swing.table.DefaultTableModel(
@@ -123,20 +143,6 @@ public class Form_User extends javax.swing.JPanel {
         });
         jScrollPane1.setViewportView(table);
 
-        btnEdit.setText("Edit");
-        btnEdit.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnEditActionPerformed(evt);
-            }
-        });
-
-        btnHapus.setText("Hapus");
-        btnHapus.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnHapusActionPerformed(evt);
-            }
-        });
-
         txtcari.setBackground(new java.awt.Color(255, 255, 255));
         txtcari.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyReleased(java.awt.event.KeyEvent evt) {
@@ -146,6 +152,30 @@ public class Form_User extends javax.swing.JPanel {
 
         jLabel1.setForeground(new java.awt.Color(0, 0, 0));
         jLabel1.setText("Cari Data");
+
+        btn_tambah.setText("tambah");
+        btn_tambah.setBorderPainted(false);
+        btn_tambah.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_tambahActionPerformed(evt);
+            }
+        });
+
+        btn_edit.setText("edit");
+        btn_edit.setBorderPainted(false);
+        btn_edit.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_editActionPerformed(evt);
+            }
+        });
+
+        btn_hapus.setText("edit");
+        btn_hapus.setBorderPainted(false);
+        btn_hapus.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_hapusActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -159,11 +189,12 @@ public class Form_User extends javax.swing.JPanel {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(lb)
                             .addGroup(layout.createSequentialGroup()
-                                .addComponent(btnTambah)
-                                .addGap(18, 18, 18)
-                                .addComponent(btnEdit)
+                                .addGap(1, 1, 1)
+                                .addComponent(btn_tambah, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(btnHapus)
+                                .addComponent(btn_edit, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btn_hapus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                 .addComponent(jLabel1)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -177,11 +208,11 @@ public class Form_User extends javax.swing.JPanel {
                 .addComponent(lb, javax.swing.GroupLayout.PREFERRED_SIZE, 51, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(btnTambah, javax.swing.GroupLayout.PREFERRED_SIZE, 27, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnEdit)
-                    .addComponent(btnHapus)
                     .addComponent(txtcari, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel1))
+                    .addComponent(jLabel1)
+                    .addComponent(btn_tambah, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btn_edit, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btn_hapus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -198,7 +229,28 @@ public class Form_User extends javax.swing.JPanel {
     private String selectedUserType;
 
 
-    private void btnTambahActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnTambahActionPerformed
+    private void mouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_mouseClicked
+        int row = table.getSelectedRow();
+
+        // Cek apakah ada baris yang dipilih
+        if (row == -1) {
+            JOptionPane.showMessageDialog(null, "Please select a row from the table.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+//        if (table.getColumnCount() > 4) {
+//            selectedUserType = table.getValueAt(row, 3).toString();
+//        } else {
+//            JOptionPane.showMessageDialog(null, "User type column is not available.", "Error", JOptionPane.ERROR_MESSAGE);
+//        }
+
+        // Jika baris valid, ambil data
+        selectedUserId = table.getValueAt(row, 0).toString();
+        selectedFullName = table.getValueAt(row, 1).toString();
+        selectedEmail = table.getValueAt(row, 2).toString();
+        selectedUserType = table.getValueAt(row, 3).toString();
+    }//GEN-LAST:event_mouseClicked
+
+    private void btn_tambahActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_tambahActionPerformed
         String fullName, email, Password, query, userType;
         String userId = null;
         String SUrl, SUser, SPass;
@@ -309,9 +361,9 @@ public class Form_User extends javax.swing.JPanel {
             System.out.println("Error! " + e.getMessage());
         }
 
-    }//GEN-LAST:event_btnTambahActionPerformed
+    }//GEN-LAST:event_btn_tambahActionPerformed
 
-    private void btnEditActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEditActionPerformed
+    private void btn_editActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_editActionPerformed
         String fullName, email, Password, query, userType;
         String SUrl, SUser, SPass;
         SUrl = "jdbc:MySQL://localhost:3306/studicase_pupuk";
@@ -413,30 +465,9 @@ public class Form_User extends javax.swing.JPanel {
         } catch (Exception e) {
             System.out.println("Error! " + e.getMessage());
         }
-    }//GEN-LAST:event_btnEditActionPerformed
+    }//GEN-LAST:event_btn_editActionPerformed
 
-    private void mouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_mouseClicked
-        int row = table.getSelectedRow();
-
-        // Cek apakah ada baris yang dipilih
-        if (row == -1) {
-            JOptionPane.showMessageDialog(null, "Please select a row from the table.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-//        if (table.getColumnCount() > 4) {
-//            selectedUserType = table.getValueAt(row, 3).toString();
-//        } else {
-//            JOptionPane.showMessageDialog(null, "User type column is not available.", "Error", JOptionPane.ERROR_MESSAGE);
-//        }
-
-        // Jika baris valid, ambil data
-        selectedUserId = table.getValueAt(row, 0).toString();
-        selectedFullName = table.getValueAt(row, 1).toString();
-        selectedEmail = table.getValueAt(row, 2).toString();
-        selectedUserType = table.getValueAt(row, 3).toString();
-    }//GEN-LAST:event_mouseClicked
-
-    private void btnHapusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnHapusActionPerformed
+    private void btn_hapusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_hapusActionPerformed
         // Cek apakah ada user yang dipilih
         if (selectedUserId == null || selectedUserId.isEmpty()) {
             JOptionPane.showMessageDialog(null, "Please select a user to delete.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -475,7 +506,7 @@ public class Form_User extends javax.swing.JPanel {
             }
         }
 
-    }//GEN-LAST:event_btnHapusActionPerformed
+    }//GEN-LAST:event_btn_hapusActionPerformed
 
     public void searchUser(String keyword) {
         model.getDataVector().removeAllElements();
@@ -516,9 +547,9 @@ public class Form_User extends javax.swing.JPanel {
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btnEdit;
-    private javax.swing.JButton btnHapus;
-    private javax.swing.JButton btnTambah;
+    private button.MyButton btn_edit;
+    private button.MyButton btn_hapus;
+    private button.MyButton btn_tambah;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JLabel lb;

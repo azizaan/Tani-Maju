@@ -4,8 +4,11 @@ import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
+import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -15,6 +18,7 @@ import java.awt.print.Printable;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
 import java.io.File;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -29,13 +33,18 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import java.sql.PreparedStatement; // Import PreparedStatement
+import java.sql.SQLException;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 
@@ -60,6 +69,42 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
         model.addColumn("Kode Pupuk");
 
         loadData();
+
+        btn_tambah.setText("+ Add");
+        btn_tambah.setColor(new Color(47, 128, 237)); // #2F80ED
+        btn_tambah.setColorOver(new Color(26, 106, 211)); // Lebih gelap saat hover
+        btn_tambah.setColorClick(new Color(15, 90, 190)); // Saat klik
+        btn_tambah.setBorderColor(new Color(47, 128, 237));
+        btn_tambah.setForeground(Color.WHITE);
+        btn_tambah.setRadius(20);
+
+// Tombol EDIT
+        btn_edit.setText("✎ Edit"); // Bisa pakai unicode pensil atau icon nanti
+        btn_edit.setColor(Color.WHITE);
+        btn_edit.setColorOver(new Color(245, 245, 245)); // hover abu muda
+        btn_edit.setColorClick(new Color(230, 230, 230));
+        btn_edit.setBorderColor(new Color(189, 189, 189)); // #BDBDBD
+        btn_edit.setForeground(new Color(79, 79, 79)); // #4F4F4F
+        btn_edit.setRadius(20);
+
+        // Tombol DELETE
+        btn_hapus.setText("🗑 Delete"); // Bisa pakai unicode icon, atau icon image nanti
+        btn_hapus.setColor(Color.WHITE);
+        btn_hapus.setColorOver(new Color(255, 230, 230)); // hover merah muda
+        btn_hapus.setColorClick(new Color(255, 200, 200));
+        btn_hapus.setBorderColor(new Color(234, 84, 85)); // Mirip merahnya
+        btn_hapus.setForeground(new Color(235, 87, 87)); // #EB5757
+        btn_hapus.setRadius(20);
+
+        // Tombol CETAK
+        btn_cetak.setText("⎙ Cetak"); // Bisa juga diganti dengan ikon print nanti
+        btn_cetak.setColor(new Color(39, 174, 96));            // Warna hijau utama (#27AE60)
+        btn_cetak.setColorOver(new Color(33, 150, 83));        // Saat hover (lebih gelap)
+        btn_cetak.setColorClick(new Color(28, 130, 72));       // Saat klik (lebih tua)
+        btn_cetak.setBorderColor(new Color(33, 150, 83));      // Serasi dengan hover
+        btn_cetak.setForeground(Color.WHITE);                 // Tulisan putih
+        btn_cetak.setRadius(20);
+
 //        table.setEnabled(false);
     }
 
@@ -73,23 +118,28 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
             Connection c = Koneksi.getKoneksi();
             Statement s = c.createStatement();
 
-            String sql = "SELECT * FROM data_pupuk";
+            String sql = "SELECT * FROM v_data_pupuk";
             ResultSet r = s.executeQuery(sql);
 
-            // Format angka ke Rupiah
-            NumberFormat rupiahFormat = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
+            // Format angka ke Rupiah tanpa nol di belakang koma
+            DecimalFormat df = new DecimalFormat("#,###.##");
+            DecimalFormatSymbols symbols = new DecimalFormatSymbols();
+            symbols.setGroupingSeparator('.');
+            symbols.setDecimalSeparator(',');
+            df.setDecimalFormatSymbols(symbols);
 
             while (r.next()) {
-                Object[] o = new Object[4]; // Sesuaikan ukuran array menjadi 4 (tanpa password)
+                Object[] o = new Object[4]; // Tanpa kode_pupuk jika tidak diperlukan
                 o[0] = r.getString("id_pupuk");
                 o[1] = r.getString("nama_pupuk");
 
-                // Ambil harga dari database dan ubah ke format Rupiah
+                // Ambil harga dari database
                 double harga = r.getDouble("harga_pupuk");
-                o[2] = rupiahFormat.format(harga);
 
+                // Format harga tanpa nol di belakang koma
+                String hargaFormatted = "Rp" + df.format(harga);
+                o[2] = hargaFormatted;
                 o[3] = r.getString("kode_pupuk");
-
                 model.addRow(o);
             }
             r.close();
@@ -105,14 +155,14 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
     private void initComponents() {
 
         lb = new javax.swing.JLabel();
-        btnTambah = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         table = new javaswingdev.swing.table.Table();
-        btnEdit = new javax.swing.JButton();
-        btnHapus = new javax.swing.JButton();
         txtcari = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
-        btnCetak = new javax.swing.JButton();
+        btn_tambah = new button.MyButton();
+        btn_edit = new button.MyButton();
+        btn_hapus = new button.MyButton();
+        btn_cetak = new button.MyButton();
 
         setOpaque(false);
 
@@ -120,13 +170,6 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
         lb.setForeground(new java.awt.Color(125, 125, 125));
         lb.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         lb.setText("Data User");
-
-        btnTambah.setText("Tambah");
-        btnTambah.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnTambahActionPerformed(evt);
-            }
-        });
 
         table.setForeground(new java.awt.Color(0, 0, 255));
         table.setModel(new javax.swing.table.DefaultTableModel(
@@ -152,20 +195,6 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
         });
         jScrollPane1.setViewportView(table);
 
-        btnEdit.setText("Edit");
-        btnEdit.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnEditActionPerformed(evt);
-            }
-        });
-
-        btnHapus.setText("Hapus");
-        btnHapus.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnHapusActionPerformed(evt);
-            }
-        });
-
         txtcari.setBackground(new java.awt.Color(255, 255, 255));
         txtcari.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyReleased(java.awt.event.KeyEvent evt) {
@@ -176,10 +205,35 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
         jLabel1.setForeground(new java.awt.Color(0, 0, 0));
         jLabel1.setText("Cari Data");
 
-        btnCetak.setText("Cetak");
-        btnCetak.addActionListener(new java.awt.event.ActionListener() {
+        btn_tambah.setText("tambah");
+        btn_tambah.setBorderPainted(false);
+        btn_tambah.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnCetakActionPerformed(evt);
+                btn_tambahActionPerformed(evt);
+            }
+        });
+
+        btn_edit.setText("edit");
+        btn_edit.setBorderPainted(false);
+        btn_edit.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_editActionPerformed(evt);
+            }
+        });
+
+        btn_hapus.setText("hapus");
+        btn_hapus.setBorderPainted(false);
+        btn_hapus.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_hapusActionPerformed(evt);
+            }
+        });
+
+        btn_cetak.setText("cetak");
+        btn_cetak.setBorderPainted(false);
+        btn_cetak.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_cetakActionPerformed(evt);
             }
         });
 
@@ -195,13 +249,13 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(lb)
                             .addGroup(layout.createSequentialGroup()
-                                .addComponent(btnTambah)
-                                .addGap(18, 18, 18)
-                                .addComponent(btnEdit)
+                                .addComponent(btn_tambah, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(btnHapus)
+                                .addComponent(btn_edit, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(btnCetak)
+                                .addComponent(btn_hapus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btn_cetak, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                 .addComponent(jLabel1)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -215,12 +269,12 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
                 .addComponent(lb, javax.swing.GroupLayout.PREFERRED_SIZE, 51, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(btnTambah, javax.swing.GroupLayout.PREFERRED_SIZE, 27, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnEdit)
-                    .addComponent(btnHapus)
                     .addComponent(txtcari, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel1)
-                    .addComponent(btnCetak))
+                    .addComponent(btn_tambah, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btn_edit, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btn_hapus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btn_cetak, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -237,9 +291,26 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
     private String selectedKodePupuk;
 
 
-    private void btnTambahActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnTambahActionPerformed
+    private void mouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_mouseClicked
+        int row = table.getSelectedRow();
+
+        // Cek apakah ada baris yang dipilih
+        if (row == -1) {
+            JOptionPane.showMessageDialog(null, "Please select a row from the table.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Ambil data dari tabel berdasarkan indeks kolom
+        selectedIdPupuk = table.getValueAt(row, 0).toString();
+        selectedNamaPupuk = table.getValueAt(row, 1).toString();
+        selectedHargaPupuk = table.getValueAt(row, 2).toString();
+        selectedKodePupuk = table.getValueAt(row, 3).toString();
+    }//GEN-LAST:event_mouseClicked
+
+
+    private void btn_tambahActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_tambahActionPerformed
         String namaPupuk, hargaPupuk, kodePupuk, query;
-        String idPupuk = null;
+        String idPupuk = null, idStock = null;
         String SUrl, SUser, SPass;
         SUrl = "jdbc:MySQL://localhost:3306/studicase_pupuk";
         SUser = "root";
@@ -251,86 +322,98 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
             Statement st = con.createStatement();
 
             // Membuat panel untuk input data
-            JPanel panel = new JPanel(new GridLayout(4, 2, 5, 5));
+            JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
             JTextField tfNamaPupuk = new JTextField(15);
             JTextField tfHargaPupuk = new JTextField(15);
 
-            // ComboBox untuk memilih kode_pupuk
-            String[] kodePupuks = {"P001", "P002", "P003", "P004"};
-            JComboBox<String> cbKodePupuk = new JComboBox<>(kodePupuks);
-
-            // Menambahkan komponen ke panel
             panel.add(new JLabel("Nama Pupuk:"));
             panel.add(tfNamaPupuk);
             panel.add(new JLabel("Harga Pupuk:"));
             panel.add(tfHargaPupuk);
-            panel.add(new JLabel("Kode Pupuk:"));
-            panel.add(cbKodePupuk);
 
             int result = JOptionPane.showConfirmDialog(null, panel,
-                    "Enter New Pupuk Details", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+                    "Tambah Data Pupuk", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
             if (result == JOptionPane.OK_OPTION) {
                 namaPupuk = tfNamaPupuk.getText().trim();
                 hargaPupuk = tfHargaPupuk.getText().trim();
-                kodePupuk = cbKodePupuk.getSelectedItem().toString();
 
-                // Validasi Nama Pupuk
-                if (namaPupuk.isEmpty()) {
-                    JOptionPane.showMessageDialog(null, "Nama Pupuk is required", "Error", JOptionPane.ERROR_MESSAGE);
+                // Validasi input
+                if (namaPupuk.isEmpty() || !namaPupuk.matches("[a-zA-Z ]+")) {
+                    JOptionPane.showMessageDialog(null, "Nama Pupuk tidak valid!", "Error", JOptionPane.ERROR_MESSAGE);
                     return;
-                } else if (!namaPupuk.matches("[a-zA-Z ]+")) {
-                    JOptionPane.showMessageDialog(null, "Nama Pupuk must only contain letters and spaces", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+                if (hargaPupuk.isEmpty() || !hargaPupuk.matches("[0-9]+")) {
+                    JOptionPane.showMessageDialog(null, "Harga Pupuk tidak valid!", "Error", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
 
-                // Validasi Harga Pupuk
-                if (hargaPupuk.isEmpty()) {
-                    JOptionPane.showMessageDialog(null, "Harga Pupuk is required", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                } else if (!hargaPupuk.matches("[0-9]+")) {
-                    JOptionPane.showMessageDialog(null, "Harga Pupuk must only contain numbers", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                // Cari id terakhir di tabel data_pupuk
+                // Generate ID Pupuk
                 String getLastIdQuery = "SELECT id_pupuk FROM data_pupuk ORDER BY id_pupuk DESC LIMIT 1";
                 ResultSet rs = st.executeQuery(getLastIdQuery);
-
                 if (rs.next()) {
                     String lastId = rs.getString("id_pupuk");
-                    if (lastId != null && lastId.length() >= 4) {
-                        int num = Integer.parseInt(lastId.substring(5));
-                        idPupuk = String.format("pupuk%03d", num + 1);
-                    } else {
-                        idPupuk = "pupuk001";
-                    }
+                    int num = Integer.parseInt(lastId.substring(5));
+                    idPupuk = String.format("pupuk%03d", num + 1);
                 } else {
                     idPupuk = "pupuk001";
                 }
+                rs.close();
 
-                // Query insert data ke tabel data_pupuk
-                query = "INSERT INTO data_pupuk (id_pupuk, nama_pupuk, harga_pupuk, kode_pupuk) "
-                        + "VALUES ('" + idPupuk + "', '" + namaPupuk + "', '" + hargaPupuk + "', '" + kodePupuk + "')";
+                // Generate Kode Pupuk
+                String getLastKodeQuery = "SELECT kode_pupuk FROM data_pupuk ORDER BY kode_pupuk DESC LIMIT 1";
+                rs = st.executeQuery(getLastKodeQuery);
+                if (rs.next()) {
+                    String lastKode = rs.getString("kode_pupuk");
+                    int num = Integer.parseInt(lastKode.substring(1));
+                    kodePupuk = String.format("P%03d", num + 1);
+                } else {
+                    kodePupuk = "P001";
+                }
+                rs.close();
 
+                // Insert ke tabel data_pupuk
+                query = "INSERT INTO data_pupuk (id_pupuk, nama_pupuk, harga_pupuk, kode_pupuk) VALUES ('" + idPupuk + "', '" + namaPupuk + "'"
+                        + ", '" + hargaPupuk + "', '" + kodePupuk + "')";
                 st.execute(query);
 
-                JOptionPane.showMessageDialog(null, "New data_pupuk has been added successfully!");
+                // Generate ID Stock Baru
+                String getLastStockId = "SELECT id_stock FROM stock_pupuk ORDER BY id_stock DESC LIMIT 1";
+                rs = st.executeQuery(getLastStockId);
+                if (rs.next()) {
+                    String lastStockId = rs.getString("id_stock");
+                    int num = Integer.parseInt(lastStockId.substring(4));
+                    idStock = String.format("stk_%03d", num + 1);
+                } else {
+                    idStock = "stk_001";
+                }
+                rs.close();
+
+//                // Insert ke tabel stock_pupuk dengan jumlah 0
+//                String insertStock = "INSERT INTO stock_pupuk (id_stock, id_pupuk, jumlah_stock) VALUES ('" + idStock + "', '" + idPupuk + "', 0)";
+//                st.execute(insertStock);
+//
+//                JOptionPane.showMessageDialog(null, "Data pupuk berhasil ditambahkan.");
+                loadData(); // fungsi refresh tabel atau data
             } else {
-                JOptionPane.showMessageDialog(null, "Data entry canceled.");
+                JOptionPane.showMessageDialog(null, "Penambahan data dibatalkan.");
             }
+
+            st.close();
+            con.close();
+
         } catch (Exception e) {
             System.out.println("Error! " + e.getMessage());
+            e.printStackTrace();
         }
+    }//GEN-LAST:event_btn_tambahActionPerformed
 
-    }//GEN-LAST:event_btnTambahActionPerformed
-
-    private void btnEditActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEditActionPerformed
+    private void btn_editActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_editActionPerformed
         String SUrl = "jdbc:mysql://localhost:3306/studicase_pupuk";
         String SUser = "root";
         String SPass = "";
 
-        // Cek apakah sudah memilih data
+// Cek apakah sudah memilih data
         if (selectedIdPupuk == null || selectedIdPupuk.trim().isEmpty()) {
             JOptionPane.showMessageDialog(null, "Please select a row from the table.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
@@ -341,28 +424,23 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
             Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
 
             // Membuat panel input
-            JPanel panel = new JPanel(new GridLayout(4, 2, 5, 5));
+            JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
             JTextField tfNamaPupuk = new JTextField(selectedNamaPupuk, 15);
-            JTextField tfHargaPupuk = new JTextField(selectedHargaPupuk, 15);
 
-            // ComboBox untuk memilih kode pupuk
-            String[] kodePupuks = {"P001", "P002", "P003", "P004"};
-            JComboBox<String> cbKodePupuk = new JComboBox<>(kodePupuks);
-            cbKodePupuk.setSelectedItem(selectedKodePupuk);
+            // Menghapus format harga sebelum ditampilkan
+            String hargaBersih = selectedHargaPupuk.replaceAll("[^0-9]", "");
+            JTextField tfHargaPupuk = new JTextField(hargaBersih, 15);
 
             panel.add(new JLabel("Nama Pupuk:"));
             panel.add(tfNamaPupuk);
             panel.add(new JLabel("Harga Pupuk:"));
             panel.add(tfHargaPupuk);
-            panel.add(new JLabel("Kode Pupuk:"));
-            panel.add(cbKodePupuk);
 
             int result = JOptionPane.showConfirmDialog(null, panel, "Edit Data Pupuk", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
             if (result == JOptionPane.OK_OPTION) {
                 String namaPupuk = tfNamaPupuk.getText().trim();
                 String hargaPupuk = tfHargaPupuk.getText().trim();
-                String kodePupuk = cbKodePupuk.getSelectedItem().toString();
 
                 // Validasi Nama Pupuk
                 if (namaPupuk.isEmpty() || !namaPupuk.matches("[a-zA-Z ]+")) {
@@ -383,13 +461,12 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
                     return;
                 }
 
-                // Query Update menggunakan PreparedStatement untuk keamanan
-                String query = "UPDATE data_pupuk SET nama_pupuk = ?, harga_pupuk = ?, kode_pupuk = ? WHERE id_pupuk = ?";
+                // Query Update tanpa mengedit kode_pupuk
+                String query = "UPDATE data_pupuk SET nama_pupuk = ?, harga_pupuk = ? WHERE id_pupuk = ?";
                 PreparedStatement pst = con.prepareStatement(query);
                 pst.setString(1, namaPupuk);
                 pst.setDouble(2, harga);
-                pst.setString(3, kodePupuk);
-                pst.setString(4, selectedIdPupuk);
+                pst.setString(3, selectedIdPupuk);
 
                 int updated = pst.executeUpdate();
 
@@ -402,31 +479,17 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
 
                 pst.close();
                 con.close();
+                loadData();
             } else {
                 JOptionPane.showMessageDialog(null, "Edit data dibatalkan.");
             }
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Error: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
-    }//GEN-LAST:event_btnEditActionPerformed
 
-    private void mouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_mouseClicked
-        int row = table.getSelectedRow();
+    }//GEN-LAST:event_btn_editActionPerformed
 
-        // Cek apakah ada baris yang dipilih
-        if (row == -1) {
-            JOptionPane.showMessageDialog(null, "Please select a row from the table.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        // Ambil data dari tabel berdasarkan indeks kolom
-        selectedIdPupuk = table.getValueAt(row, 0).toString();
-        selectedNamaPupuk = table.getValueAt(row, 1).toString();
-        selectedHargaPupuk = table.getValueAt(row, 2).toString();
-        selectedKodePupuk = table.getValueAt(row, 3).toString();
-    }//GEN-LAST:event_mouseClicked
-
-    private void btnHapusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnHapusActionPerformed
+    private void btn_hapusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_hapusActionPerformed
         String SUrl = "jdbc:mysql://localhost:3306/studicase_pupuk";
         String SUser = "root";
         String SPass = "";
@@ -464,15 +527,15 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
 
             pst.close();
             con.close();
+            loadData();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Error: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
 
-    }//GEN-LAST:event_btnHapusActionPerformed
+    }//GEN-LAST:event_btn_hapusActionPerformed
 
-
-    private void btnCetakActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCetakActionPerformed
-        // Pilih opsi cetak
+    private void btn_cetakActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_cetakActionPerformed
+// Ambil opsi cetak
         String[] options = {"Cetak Satu", "Cetak Beberapa", "Cetak Semua"};
         int choice = JOptionPane.showOptionDialog(null, "Pilih opsi cetak:", "Opsi Cetak",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
@@ -480,40 +543,55 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
 
         List<String> idPupukList = new ArrayList<>();
 
+// Misalnya data diambil dari database
+        Map<String, String> pupukMap = getPupukMap(); // Key = id, Value = nama
+
         if (choice == 0) { // Cetak Satu
-            List<String> allIds = getAllPupukIds();
-            String selected = (String) JOptionPane.showInputDialog(null, "Pilih pupuk yang ingin dicetak:", "Pilih Pupuk",
+            String[] namaPupukArray = pupukMap.values().toArray(new String[0]);
+            String selectedName = (String) JOptionPane.showInputDialog(null, "Pilih pupuk yang ingin dicetak:", "Pilih Pupuk",
                     JOptionPane.QUESTION_MESSAGE, null,
-                    allIds.toArray(), allIds.get(0));
-            if (selected != null) {
-                idPupukList.add(selected);
+                    namaPupukArray, namaPupukArray[0]);
+            if (selectedName != null) {
+                for (Map.Entry<String, String> entry : pupukMap.entrySet()) {
+                    if (entry.getValue().equals(selectedName)) {
+                        idPupukList.add(entry.getKey());
+                        break;
+                    }
+                }
             }
-        } else if (choice == 1) { // Cetak Beberapa dengan JTable
-            List<String> allIds = getAllPupukIds();
-            DefaultTableModel model = new DefaultTableModel(new Object[]{"Pilih", "ID Pupuk"}, 0);
-            for (String id : allIds) {
-                model.addRow(new Object[]{false, id});
+        } else if (choice == 1) { // Cetak Beberapa
+            DefaultTableModel model = new DefaultTableModel(new Object[]{"Nama Pupuk", "Pilih"}, 0);
+            for (Map.Entry<String, String> entry : pupukMap.entrySet()) {
+                model.addRow(new Object[]{entry.getValue(), false});
             }
 
             JTable table = new JTable(model) {
                 @Override
                 public Class<?> getColumnClass(int column) {
-                    return column == 0 ? Boolean.class : String.class;
+                    return column == 1 ? Boolean.class : String.class;
                 }
             };
 
             JScrollPane scrollPane = new JScrollPane(table);
+            scrollPane.setPreferredSize(new Dimension(400, 300));
+
             int confirm = JOptionPane.showConfirmDialog(null, scrollPane, "Pilih Pupuk untuk Dicetak", JOptionPane.OK_CANCEL_OPTION);
 
             if (confirm == JOptionPane.OK_OPTION) {
                 for (int i = 0; i < model.getRowCount(); i++) {
-                    if ((Boolean) model.getValueAt(i, 0)) {
-                        idPupukList.add((String) model.getValueAt(i, 1));
+                    if ((Boolean) model.getValueAt(i, 1)) {
+                        String namaDipilih = (String) model.getValueAt(i, 0);
+                        for (Map.Entry<String, String> entry : pupukMap.entrySet()) {
+                            if (entry.getValue().equals(namaDipilih)) {
+                                idPupukList.add(entry.getKey());
+                                break;
+                            }
+                        }
                     }
                 }
             }
         } else if (choice == 2) { // Cetak Semua
-            idPupukList.addAll(getAllPupukIds());
+            idPupukList.addAll(pupukMap.keySet());
         }
 
         if (idPupukList.isEmpty()) {
@@ -521,41 +599,53 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
             return;
         }
 
-        // Cetak semua barcode dalam daftar
+// Cetak barcode
         PrinterJob job = PrinterJob.getPrinterJob();
         job.setPrintable(new Printable() {
             @Override
             public int print(Graphics g, PageFormat pf, int pageIndex) throws PrinterException {
-                int barcodesPerPage = 5; // Sesuaikan dengan ukuran halaman dan barcode
-                int barcodeHeight = 100; // Perkiraan tinggi barcode dengan teks
-                int startY = (int) pf.getImageableY();
-                int startX = (int) pf.getImageableX();
+                int columns = 2;
+                int rows = 5;
+                int barcodesPerPage = columns * rows;
                 int barcodeWidth = 200;
+                int barcodeHeight = 100;
+                int paddingX = 20;
+                int paddingY = 20;
 
                 int startIndex = pageIndex * barcodesPerPage;
                 if (startIndex >= idPupukList.size()) {
                     return Printable.NO_SUCH_PAGE;
                 }
 
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.translate(pf.getImageableX(), pf.getImageableY());
+
                 for (int i = 0; i < barcodesPerPage && (startIndex + i) < idPupukList.size(); i++) {
+                    int row = i / columns;
+                    int col = i % columns;
+
+                    int x = col * (barcodeWidth + paddingX);
+                    int y = row * (barcodeHeight + paddingY);
+
                     String idPupuk = idPupukList.get(startIndex + i);
                     String barcodePath = BarcodeGenerator.saveBarcodeImage(idPupuk);
                     if (barcodePath == null) {
-                        return Printable.NO_SUCH_PAGE;
+                        continue;
                     }
 
                     try {
                         BufferedImage barcode = ImageIO.read(new File(barcodePath));
-                        g.drawImage(barcode, startX, startY + (i * barcodeHeight), barcodeWidth, barcodeHeight - 20, null);
+                        g2d.drawImage(barcode, x, y, barcodeWidth, barcodeHeight - 20, null);
 
-                        // Tambahkan teks ID di bawah barcode
-                        g.setFont(new Font("Arial", Font.BOLD, 12));
-                        g.drawString(idPupuk, startX + (barcodeWidth / 2) - 20, startY + (i * barcodeHeight) + barcodeHeight - 5);
-
+                        String namaPupuk = pupukMap.getOrDefault(idPupuk, idPupuk);
+                        g2d.setFont(new Font("Arial", Font.BOLD, 12));
+                        int stringWidth = g2d.getFontMetrics().stringWidth(namaPupuk);
+                        g2d.drawString(namaPupuk, x + (barcodeWidth - stringWidth) / 2, y + barcodeHeight - 5);
                     } catch (Exception e) {
-                        return Printable.NO_SUCH_PAGE;
+                        e.printStackTrace();
                     }
                 }
+
                 return Printable.PAGE_EXISTS;
             }
         });
@@ -570,7 +660,46 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
                 JOptionPane.showMessageDialog(null, "Terjadi kesalahan saat mencetak: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
-    }//GEN-LAST:event_btnCetakActionPerformed
+
+    }//GEN-LAST:event_btn_cetakActionPerformed
+
+    public Map<String, String> getPupukMap() {
+        Map<String, String> map = new LinkedHashMap<>();
+        Connection con = null;
+        Statement stmt = null;
+        ResultSet rs = null;
+
+        try {
+            con = Koneksi.getKoneksi(); // pastikan class Koneksi punya method getKoneksi()
+            stmt = con.createStatement();
+            rs = stmt.executeQuery("SELECT id_pupuk, nama_pupuk FROM data_pupuk");
+
+            while (rs.next()) {
+                String id = rs.getString("id_pupuk");
+                String nama = rs.getString("nama_pupuk");
+                map.put(id, nama);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Gagal mengambil data pupuk: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        } finally {
+            try {
+                if (rs != null) {
+                    rs.close();
+                }
+                if (stmt != null) {
+                    stmt.close();
+                }
+                if (con != null) {
+                    con.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return map;
+    }
 
     private List<String> getAllPupukIds() {
         List<String> pupukIds = new ArrayList<>();
@@ -632,12 +761,21 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
         }
     }
 
+    public String formatHarga(double harga) {
+        DecimalFormat df = new DecimalFormat("#,###.##");
+        DecimalFormatSymbols symbols = new DecimalFormatSymbols();
+        symbols.setGroupingSeparator('.');
+        symbols.setDecimalSeparator(',');
+        df.setDecimalFormatSymbols(symbols);
+
+        return "Rp" + df.format(harga);
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btnCetak;
-    private javax.swing.JButton btnEdit;
-    private javax.swing.JButton btnHapus;
-    private javax.swing.JButton btnTambah;
+    private button.MyButton btn_cetak;
+    private button.MyButton btn_edit;
+    private button.MyButton btn_hapus;
+    private button.MyButton btn_tambah;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JLabel lb;

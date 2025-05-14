@@ -5,6 +5,10 @@ import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.toedter.calendar.JDateChooser;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
@@ -41,6 +45,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JScrollPane;
 
 public class Form_Restock_Pupuk extends javax.swing.JPanel {
 
@@ -57,14 +64,44 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
         table.setModel(model);
 
         // Menghapus kolom password dari tabel
-        model.addColumn("ID Restock");
-        model.addColumn("ID Stock");
-//        model.addColumn("Nama Pupuk");
+        model.addColumn("No");
+//        model.addColumn("ID Stock");
+        model.addColumn("Nama Pupuk");
         model.addColumn("Jumlah Restock");
         model.addColumn("Tanggal Restock");
 
         loadData();
 //        table.setEnabled(false);
+
+        btn_tambah.setText(" + Add ");
+        btn_edit.setText(" ✎ Edit ");
+        btn_hapus.setText(" 🗑 Delete ");
+        // Tombol ADD
+        btn_tambah.setText("+ Add");
+        btn_tambah.setColor(new Color(47, 128, 237)); // #2F80ED
+        btn_tambah.setColorOver(new Color(26, 106, 211)); // Lebih gelap saat hover
+        btn_tambah.setColorClick(new Color(15, 90, 190)); // Saat klik
+        btn_tambah.setBorderColor(new Color(47, 128, 237));
+        btn_tambah.setForeground(Color.WHITE);
+        btn_tambah.setRadius(20);
+
+// Tombol EDIT
+        btn_edit.setText("✎ Edit"); // Bisa pakai unicode pensil atau icon nanti
+        btn_edit.setColor(Color.WHITE);
+        btn_edit.setColorOver(new Color(245, 245, 245)); // hover abu muda
+        btn_edit.setColorClick(new Color(230, 230, 230));
+        btn_edit.setBorderColor(new Color(189, 189, 189)); // #BDBDBD
+        btn_edit.setForeground(new Color(79, 79, 79)); // #4F4F4F
+        btn_edit.setRadius(20);
+
+// Tombol DELETE
+        btn_hapus.setText("🗑 Delete"); // Bisa pakai unicode icon, atau icon image nanti
+        btn_hapus.setColor(Color.WHITE);
+        btn_hapus.setColorOver(new Color(255, 230, 230)); // hover merah muda
+        btn_hapus.setColorClick(new Color(255, 200, 200));
+        btn_hapus.setBorderColor(new Color(234, 84, 85)); // Mirip merahnya
+        btn_hapus.setForeground(new Color(235, 87, 87)); // #EB5757
+        btn_hapus.setRadius(20);
     }
 
     private DefaultTableModel model;
@@ -77,24 +114,26 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
             Connection c = Koneksi.getKoneksi();
             Statement s = c.createStatement();
 
-            // Menggunakan JOIN untuk mengambil nama_pupuk berdasarkan id_stock
-            String sql = "SELECT r.id_restock, s.id_stock, p.nama_pupuk, r.jumlah_restock, r.tgl_restock "
-                    + "FROM restock_pupuk r "
-                    + "JOIN stock_pupuk s ON r.id_stock = s.id_stock "
-                    + "JOIN data_pupuk p ON s.id_pupuk = p.id_pupuk";
+            String sql = "SELECT ks.id_kartu, dp.nama_pupuk, ks.jumlah_masuk, ks.tanggal, ks.keterangan "
+                    + "FROM kartu_stock ks "
+                    + "JOIN data_pupuk dp ON ks.id_pupuk = dp.id_pupuk "
+                    + "WHERE ks.jumlah_masuk > 0 "
+                    + "ORDER BY ks.tanggal ASC";
 
             ResultSet r = s.executeQuery(sql);
 
+            int no = 1;
             while (r.next()) {
-                Object[] o = new Object[4]; // Sesuaikan ukuran array dengan jumlah kolom
-                o[0] = r.getString("id_restock");     // ID Restock
-                o[1] = r.getString("id_stock");       // ID Stock
-//                o[2] = r.getString("nama_pupuk");     // Nama Pupuk
-                o[2] = r.getString("jumlah_restock"); // Jumlah Restock
-                o[3] = r.getString("tgl_restock");// Tanggal Restock
+                Object[] o = new Object[5];
+                o[0] = no++;                             // No
+                o[1] = r.getString("nama_pupuk");        // Nama Pupuk
+                o[2] = r.getInt("jumlah_masuk");         // Jumlah Masuk (Restock)
+                o[3] = r.getDate("tanggal");             // Tanggal Restock
+                o[4] = r.getString("keterangan");        // Keterangan
 
                 model.addRow(o);
             }
+
             r.close();
             s.close();
         } catch (Exception e) {
@@ -108,13 +147,13 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
     private void initComponents() {
 
         lb = new javax.swing.JLabel();
-        btnTambah = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         table = new javaswingdev.swing.table.Table();
-        btnEdit = new javax.swing.JButton();
-        btnHapus = new javax.swing.JButton();
         txtcari = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
+        btn_tambah = new button.MyButton();
+        btn_edit = new button.MyButton();
+        btn_hapus = new button.MyButton();
 
         setOpaque(false);
 
@@ -122,13 +161,6 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
         lb.setForeground(new java.awt.Color(125, 125, 125));
         lb.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         lb.setText("Data User");
-
-        btnTambah.setText("Tambah");
-        btnTambah.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnTambahActionPerformed(evt);
-            }
-        });
 
         table.setForeground(new java.awt.Color(0, 0, 255));
         table.setModel(new javax.swing.table.DefaultTableModel(
@@ -154,20 +186,6 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
         });
         jScrollPane1.setViewportView(table);
 
-        btnEdit.setText("Edit");
-        btnEdit.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnEditActionPerformed(evt);
-            }
-        });
-
-        btnHapus.setText("Hapus");
-        btnHapus.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnHapusActionPerformed(evt);
-            }
-        });
-
         txtcari.setBackground(new java.awt.Color(255, 255, 255));
         txtcari.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyReleased(java.awt.event.KeyEvent evt) {
@@ -177,6 +195,30 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
 
         jLabel1.setForeground(new java.awt.Color(0, 0, 0));
         jLabel1.setText("Cari Data");
+
+        btn_tambah.setText("tambah");
+        btn_tambah.setBorderPainted(false);
+        btn_tambah.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_tambahActionPerformed(evt);
+            }
+        });
+
+        btn_edit.setText("edit");
+        btn_edit.setBorderPainted(false);
+        btn_edit.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_editActionPerformed(evt);
+            }
+        });
+
+        btn_hapus.setText("hapus");
+        btn_hapus.setBorderPainted(false);
+        btn_hapus.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_hapusActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -190,11 +232,11 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(lb)
                             .addGroup(layout.createSequentialGroup()
-                                .addComponent(btnTambah)
-                                .addGap(18, 18, 18)
-                                .addComponent(btnEdit)
+                                .addComponent(btn_tambah, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(btnHapus)
+                                .addComponent(btn_edit, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btn_hapus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                 .addComponent(jLabel1)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -208,11 +250,11 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
                 .addComponent(lb, javax.swing.GroupLayout.PREFERRED_SIZE, 51, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(btnTambah, javax.swing.GroupLayout.PREFERRED_SIZE, 27, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnEdit)
-                    .addComponent(btnHapus)
                     .addComponent(txtcari, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel1))
+                    .addComponent(jLabel1)
+                    .addComponent(btn_tambah, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btn_edit, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btn_hapus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -229,8 +271,23 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
     private String selectedKodePupuk;
 
 
-    private void btnTambahActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnTambahActionPerformed
-        String idPupuk = null, namaPupuk = null, jumlahStock = null;
+    private void mouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_mouseClicked
+        int row = table.getSelectedRow();
+
+        // Cek apakah ada baris yang dipilih
+        if (row == -1) {
+            JOptionPane.showMessageDialog(null, "Please select a row from the table.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Ambil data dari tabel berdasarkan indeks kolom
+        selectedIdPupuk = table.getValueAt(row, 0).toString();
+        selectedNamaPupuk = table.getValueAt(row, 1).toString();
+        selectedHargaPupuk = table.getValueAt(row, 2).toString();
+        selectedKodePupuk = table.getValueAt(row, 3).toString();
+    }//GEN-LAST:event_mouseClicked
+
+    private void btn_tambahActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_tambahActionPerformed
         String SUrl = "jdbc:mysql://localhost:3306/studicase_pupuk";
         String SUser = "root";
         String SPass = "";
@@ -240,7 +297,7 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
             Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
             Statement st = con.createStatement();
 
-            // Ambil daftar pupuk dari database
+            // Ambil daftar pupuk
             String getPupukQuery = "SELECT id_pupuk, nama_pupuk FROM data_pupuk";
             ResultSet rs = st.executeQuery(getPupukQuery);
 
@@ -251,7 +308,6 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
                 pupukList.add(rs.getString("nama_pupuk"));
                 pupukMap.put(rs.getString("nama_pupuk"), rs.getString("id_pupuk"));
             }
-
             rs.close();
 
             if (pupukList.isEmpty()) {
@@ -259,125 +315,170 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
                 return;
             }
 
-            // Membuat panel untuk input data stok
-            JPanel panel = new JPanel(new GridLayout(4, 2, 5, 5));
-            JComboBox<String> cbPupuk = new JComboBox<>(pupukList.toArray(new String[0]));
-            JTextField tfJumlahStock = new JTextField(15);
+            // Panel input
+            JPanel panel = new JPanel(new BorderLayout());
+
+            JPanel listPanel = new JPanel();
+            listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
+
+            List<JComboBox<String>> comboList = new ArrayList<>();
+            List<JTextField> jumlahList = new ArrayList<>();
+
+            JButton btnTambahBaris = new JButton("Tambah Baris");
+
+            Runnable addRow = () -> {
+                JPanel rowPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+                JLabel label = new JLabel("Pupuk:");
+                JComboBox<String> cb = new JComboBox<>(pupukList.toArray(new String[0]));
+                JTextField tf = new JTextField(5);
+                JButton btnHapus = new JButton("❌");
+
+                comboList.add(cb);
+                jumlahList.add(tf);
+
+                btnHapus.addActionListener(e -> {
+                    listPanel.remove(rowPanel);
+                    comboList.remove(cb);
+                    jumlahList.remove(tf);
+                    listPanel.revalidate();
+                    listPanel.repaint();
+                });
+
+                rowPanel.add(label);
+                rowPanel.add(cb);
+                rowPanel.add(tf);
+                rowPanel.add(btnHapus);
+
+                listPanel.add(rowPanel);
+                listPanel.revalidate();
+                listPanel.repaint();
+            };
+
+            addRow.run();
+
+            JScrollPane scrollPane = new JScrollPane(listPanel);
+            scrollPane.setPreferredSize(new Dimension(310, 100));
+            panel.add(scrollPane, BorderLayout.CENTER);
+
+            panel.add(btnTambahBaris, BorderLayout.SOUTH);
+            btnTambahBaris.addActionListener(e -> addRow.run());
+
+            // Tanggal restock
+            JPanel tanggalPanel = new JPanel(new FlowLayout());
             JDateChooser dateChooser = new JDateChooser();
             dateChooser.setDateFormatString("yyyy-MM-dd HH:mm:ss");
+            tanggalPanel.add(new JLabel("Tanggal Restock:"));
+            tanggalPanel.add(dateChooser);
+            panel.add(tanggalPanel, BorderLayout.NORTH);
 
-            // Menambahkan komponen ke panel
-            panel.add(new JLabel("Pilih Pupuk:"));
-            panel.add(cbPupuk);
-            panel.add(new JLabel("Jumlah Stock:"));
-            panel.add(tfJumlahStock);
-            panel.add(new JLabel("Tanggal Restock:"));
-            panel.add(dateChooser);
-
-            int result = JOptionPane.showConfirmDialog(null, panel,
-                    "Tambah Stock Pupuk", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
-            if (result == JOptionPane.OK_OPTION) {
-                namaPupuk = cbPupuk.getSelectedItem().toString();
-                idPupuk = pupukMap.get(namaPupuk);
-                jumlahStock = tfJumlahStock.getText().trim();
-                Date selectedDate = dateChooser.getDate();
-
-                // Validasi jumlah stok
-                if (jumlahStock.isEmpty()) {
-                    JOptionPane.showMessageDialog(null, "Jumlah stok harus diisi!", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                } else if (!jumlahStock.matches("[0-9]+")) {
-                    JOptionPane.showMessageDialog(null, "Jumlah stok harus berupa angka!", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                if (selectedDate == null) {
-                    JOptionPane.showMessageDialog(null, "Silakan pilih tanggal restock!", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                String tanggalRestock = sdf.format(selectedDate);
-                int stokBaru = Integer.parseInt(jumlahStock);
-
-                // Periksa apakah stok pupuk sudah ada di tabel stock_pupuk
-                String checkStockQuery = "SELECT id_stock, jumlah_stock FROM stock_pupuk WHERE id_pupuk = ?";
-                PreparedStatement psCheckStock = con.prepareStatement(checkStockQuery);
-                psCheckStock.setString(1, idPupuk);
-                ResultSet rsStock = psCheckStock.executeQuery();
-
-                String idStock;
-                if (rsStock.next()) {
-                    // Jika stok sudah ada, update jumlahnya
-                    int stokLama = rsStock.getInt("jumlah_stock");
-                    int totalStok = stokLama + stokBaru;
-                    idStock = rsStock.getString("id_stock");
-
-                    String updateQuery = "UPDATE stock_pupuk SET jumlah_stock = ? WHERE id_stock = ?";
-                    PreparedStatement psUpdate = con.prepareStatement(updateQuery);
-                    psUpdate.setInt(1, totalStok);
-                    psUpdate.setString(2, idStock);
-                    psUpdate.executeUpdate();
-
-                    JOptionPane.showMessageDialog(null, "Stok pupuk berhasil diperbarui!");
-                } else {
-                    // Jika stok belum ada, tambahkan stok baru
-                    String insertQuery = "INSERT INTO stock_pupuk (id_pupuk, jumlah_stock) VALUES (?, ?)";
-                    PreparedStatement psInsertStock = con.prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS);
-                    psInsertStock.setString(1, idPupuk);
-                    psInsertStock.setInt(2, stokBaru);
-                    psInsertStock.executeUpdate();
-
-                    // Ambil ID Stock yang baru ditambahkan
-                    ResultSet rsGenKeys = psInsertStock.getGeneratedKeys();
-                    if (rsGenKeys.next()) {
-                        idStock = rsGenKeys.getString(1);
-                    } else {
-                        throw new SQLException("Gagal mendapatkan ID stok.");
-                    }
-
-                    JOptionPane.showMessageDialog(null, "Stok pupuk berhasil ditambahkan!");
-                }
-                rsStock.close();
-
-                // **Menentukan ID Restock Baru**
-                String getLastRestockIdQuery = "SELECT id_restock FROM restock_pupuk ORDER BY id_restock DESC LIMIT 1";
-                ResultSet rsLastRestock = st.executeQuery(getLastRestockIdQuery);
-                String newIdRestock = "rst_001"; // Default jika belum ada data
-
-                if (rsLastRestock.next()) {
-                    String lastId = rsLastRestock.getString("id_restock"); // Misalnya rst_005
-                    int lastNumber = Integer.parseInt(lastId.split("_")[1]); // Ambil angka 5
-                    newIdRestock = String.format("rst_%03d", lastNumber + 1); // Jadi rst_006
-                }
-                rsLastRestock.close();
-
-                // Simpan data restock ke tabel restock_pupuk dengan ID baru
-                String insertRestockQuery = "INSERT INTO restock_pupuk (id_restock, id_stock, jumlah_restock, tgl_restock) VALUES (?, ?, ?, ?)";
-                PreparedStatement psInsertRestock = con.prepareStatement(insertRestockQuery);
-                psInsertRestock.setString(1, newIdRestock);
-                psInsertRestock.setString(2, idStock);
-                psInsertRestock.setInt(3, stokBaru);
-                psInsertRestock.setString(4, tanggalRestock);
-                psInsertRestock.executeUpdate();
-
-//                JOptionPane.showMessageDialog(null, "Restock berhasil dicatat dengan ID: " + newIdRestock);
-                psCheckStock.close();
-                con.close();
-            } else {
+            int result = JOptionPane.showConfirmDialog(null, panel, "Tambah Multi-Stok Pupuk", JOptionPane.OK_CANCEL_OPTION);
+            if (result != JOptionPane.OK_OPTION) {
                 JOptionPane.showMessageDialog(null, "Penambahan stok dibatalkan.");
+                return;
             }
 
+            Date selectedDate = dateChooser.getDate();
+            if (selectedDate == null) {
+                JOptionPane.showMessageDialog(null, "Silakan pilih tanggal restock!", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String tanggalRestock = sdf.format(selectedDate);
+
+            // Generate id_restock baru
+            String getLastRestockIdQuery = "SELECT id_restock FROM restock_pupuk ORDER BY id_restock DESC LIMIT 1";
+            ResultSet rsLastRestock = st.executeQuery(getLastRestockIdQuery);
+            String newIdRestock = "rst_001";
+            if (rsLastRestock.next()) {
+                String lastId = rsLastRestock.getString("id_restock");
+                int lastNumber = Integer.parseInt(lastId.split("_")[1]);
+                newIdRestock = String.format("rst_%03d", lastNumber + 1);
+            }
+            rsLastRestock.close();
+
+            // Validasi input
+            for (int i = 0; i < comboList.size(); i++) {
+                String jumlahText = jumlahList.get(i).getText().trim();
+                if (jumlahText.isEmpty() || !jumlahText.matches("\\d+")) {
+                    JOptionPane.showMessageDialog(null, "Jumlah harus diisi dan berupa angka pada baris ke-" + (i + 1));
+                    return;
+                }
+            }
+
+            // Insert ke restock_pupuk
+            String insertRestockQuery = "INSERT INTO restock_pupuk (id_restock, tgl_restock) VALUES (?, ?)";
+            PreparedStatement psInsertRestock = con.prepareStatement(insertRestockQuery);
+            psInsertRestock.setString(1, newIdRestock);
+            psInsertRestock.setString(2, tanggalRestock);
+            psInsertRestock.executeUpdate();
+
+            // Ambil ID kartu terakhir
+            String getLastKartuQuery = "SELECT id_kartu FROM kartu_stock ORDER BY id_kartu DESC LIMIT 1";
+            ResultSet rsLastKartu = st.executeQuery(getLastKartuQuery);
+            int lastKartuNum = 0;
+            if (rsLastKartu.next()) {
+                String lastId = rsLastKartu.getString("id_kartu");
+                lastKartuNum = Integer.parseInt(lastId.split("_")[1]);
+            }
+            rsLastKartu.close();
+
+            // Insert detail_restock dan kartu_stock
+            String insertDetailRestockQuery = "INSERT INTO detail_restock (id_restock, id_pupuk, jumlah) VALUES (?, ?, ?)";
+//            String insertStockQuery = "INSERT INTO kartu_stock (id_kartu, id_pupuk, id_restock, tanggal, jumlah_masuk, sisa, keterangan) VALUES (?, ?, ?, ?, ?, ?, ?)";
+//            String insertStockQuery = "INSERT INTO kartu_stock (id_kartu, id_pupuk, tanggal, jumlah_masuk, sisa, keterangan) VALUES (?, ?, ?, ?, ?, ?)";
+
+            for (int i = 0; i < comboList.size(); i++) {
+                String namaPupuk = comboList.get(i).getSelectedItem().toString();
+                String idPupuk = pupukMap.get(namaPupuk);
+                int jumlahRestock = Integer.parseInt(jumlahList.get(i).getText().trim());
+
+                // Insert ke detail_restock
+                PreparedStatement psDetail = con.prepareStatement(insertDetailRestockQuery);
+                psDetail.setString(1, newIdRestock);
+                psDetail.setString(2, idPupuk);
+                psDetail.setInt(3, jumlahRestock);
+                psDetail.executeUpdate();
+
+                // Ambil sisa stok terakhir
+                int stokSebelumnya = 0;
+                String stokQuery = "SELECT sisa FROM kartu_stock WHERE id_pupuk = ? ORDER BY id_kartu DESC LIMIT 1";
+                PreparedStatement psStok = con.prepareStatement(stokQuery);
+                psStok.setString(1, idPupuk);
+                ResultSet rsStok = psStok.executeQuery();
+                if (rsStok.next()) {
+                    stokSebelumnya = rsStok.getInt("sisa");
+                }
+                rsStok.close();
+
+                int stokBaru = stokSebelumnya + jumlahRestock;
+                String newIdKartu = String.format("kst_%03d", ++lastKartuNum);
+
+//                // Insert ke kartu_stock
+//                PreparedStatement psInsertStock = con.prepareStatement(insertStockQuery);
+//                psInsertStock.setString(1, newIdKartu);
+//                psInsertStock.setString(2, idPupuk);
+//                psInsertStock.setString(3, tanggalRestock);
+//                psInsertStock.setInt(4, jumlahRestock);
+//                psInsertStock.setInt(5, stokBaru);
+//                psInsertStock.setString(6, "Restock");
+//
+//                psInsertStock.executeUpdate();
+            }
+
+            JOptionPane.showMessageDialog(null, "Stok pupuk berhasil ditambahkan!");
+            con.close();
+            loadData();
+
         } catch (Exception e) {
-            System.out.println("Error! " + e.getMessage());
             e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Terjadi kesalahan: " + e.getMessage());
         }
 
-    }//GEN-LAST:event_btnTambahActionPerformed
+    }//GEN-LAST:event_btn_tambahActionPerformed
 
-    private void btnEditActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEditActionPerformed
-        // Pastikan pengguna sudah memilih baris di tabel
+    private void btn_editActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_editActionPerformed
+// Pastikan pengguna sudah memilih baris di tabel
         int row = table.getSelectedRow();
         if (row == -1) {
             JOptionPane.showMessageDialog(null, "Silakan pilih data yang ingin diedit!", "Error", JOptionPane.ERROR_MESSAGE);
@@ -452,25 +553,9 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
             JOptionPane.showMessageDialog(null, "Terjadi kesalahan: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
         }
-    }//GEN-LAST:event_btnEditActionPerformed
+    }//GEN-LAST:event_btn_editActionPerformed
 
-    private void mouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_mouseClicked
-        int row = table.getSelectedRow();
-
-        // Cek apakah ada baris yang dipilih
-        if (row == -1) {
-            JOptionPane.showMessageDialog(null, "Please select a row from the table.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        // Ambil data dari tabel berdasarkan indeks kolom
-        selectedIdPupuk = table.getValueAt(row, 0).toString();
-        selectedNamaPupuk = table.getValueAt(row, 1).toString();
-        selectedHargaPupuk = table.getValueAt(row, 2).toString();
-        selectedKodePupuk = table.getValueAt(row, 3).toString();
-    }//GEN-LAST:event_mouseClicked
-
-    private void btnHapusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnHapusActionPerformed
+    private void btn_hapusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_hapusActionPerformed
         int row = table.getSelectedRow();
         if (row == -1) {
             JOptionPane.showMessageDialog(null, "Silakan pilih data yang ingin dihapus!", "Error", JOptionPane.ERROR_MESSAGE);
@@ -531,7 +616,7 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
             JOptionPane.showMessageDialog(null, "Terjadi kesalahan: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
         }
-    }//GEN-LAST:event_btnHapusActionPerformed
+    }//GEN-LAST:event_btn_hapusActionPerformed
 
     public void searchUser(String keyword) {
         model.getDataVector().removeAllElements();
@@ -539,34 +624,42 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
 
         try {
             Connection c = Koneksi.getKoneksi();
-            String sql = "SELECT id_restock, id_stock, jumlah_restock, tgl_restock FROM restock_pupuk "
-                    + "WHERE id_restock LIKE ? OR id_stock LIKE ? OR jumlah_restock LIKE ? OR tgl_restock LIKE ?";
+            String sql = "SELECT ks.id_kartu, dp.nama_pupuk, ks.jumlah_masuk, ks.tanggal, ks.keterangan "
+                    + "FROM kartu_stock ks "
+                    + "JOIN data_pupuk dp ON ks.id_pupuk = dp.id_pupuk "
+                    + "WHERE ks.jumlah_masuk > 0 AND ("
+                    + "ks.id_kartu LIKE ? OR "
+                    + "dp.nama_pupuk LIKE ? OR "
+                    + "ks.jumlah_masuk LIKE ? OR "
+                    + "ks.tanggal LIKE ? OR "
+                    + "ks.keterangan LIKE ?) "
+                    + "ORDER BY ks.tanggal ASC";
+
             PreparedStatement ps = c.prepareStatement(sql);
 
-            // Set parameter untuk semua kolom yang dicari
             String searchKeyword = "%" + keyword + "%";
-            for (int i = 1; i <= 4; i++) {
+            for (int i = 1; i <= 5; i++) {
                 ps.setString(i, searchKeyword);
             }
 
             ResultSet r = ps.executeQuery();
 
-            // Tambahkan hasil pencarian ke tabel
+            int no = 1;
             boolean adaData = false;
             while (r.next()) {
-                Object[] row = {
-                    r.getString("id_restock"),
-                    r.getString("id_stock"),
-                    r.getInt("jumlah_restock"),
-                    r.getString("tgl_restock")
-                };
+                Object[] row = new Object[5];
+                row[0] = no++;
+                row[1] = r.getString("nama_pupuk");
+                row[2] = r.getInt("jumlah_masuk");
+                row[3] = r.getDate("tanggal");
+                row[4] = r.getString("keterangan");
+
                 model.addRow(row);
                 adaData = true;
             }
 
-            // Jika tidak ada hasil, tambahkan baris "Data tidak ditemukan"
             if (!adaData) {
-                model.addRow(new Object[]{"Data tidak ditemukan", "", "", ""});
+                model.addRow(new Object[]{"Data tidak ditemukan", "", "", "", ""});
             }
 
             r.close();
@@ -579,9 +672,9 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btnEdit;
-    private javax.swing.JButton btnHapus;
-    private javax.swing.JButton btnTambah;
+    private button.MyButton btn_edit;
+    private button.MyButton btn_hapus;
+    private button.MyButton btn_tambah;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JLabel lb;

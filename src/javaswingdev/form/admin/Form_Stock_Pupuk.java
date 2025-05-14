@@ -1,9 +1,11 @@
 package javaswingdev.form.admin;
 
+import button.MyButton;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
+import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
@@ -53,12 +55,44 @@ public class Form_Stock_Pupuk extends javax.swing.JPanel {
         table.setModel(model);
 
         // Menghapus kolom password dari tabel
-        model.addColumn("ID Stock");
+        model.addColumn("Id Pupuk   ");
         model.addColumn("Nama Pupuk");
-        model.addColumn("Jumlah Stock");
-//        model.addColumn("Kode Pupuk");
+//        model.addColumn("Jumlah Masuk");
+        model.addColumn("Sisa");
+//        model.addColumn("Keterangan");
 
         loadData();
+
+//        btn_tambah.setText(" + Add ");
+//        btn_edit.setText(" ✎ Edit ");
+//        btn_hapus.setText(" 🗑 Delete ");
+//        // Tombol ADD
+//        btn_tambah.setText("+ Add");
+//        btn_tambah.setColor(new Color(47, 128, 237)); // #2F80ED
+//        btn_tambah.setColorOver(new Color(26, 106, 211)); // Lebih gelap saat hover
+//        btn_tambah.setColorClick(new Color(15, 90, 190)); // Saat klik
+//        btn_tambah.setBorderColor(new Color(47, 128, 237));
+//        btn_tambah.setForeground(Color.WHITE);
+//        btn_tambah.setRadius(20);
+//
+//// Tombol EDIT
+//        btn_edit.setText("✎ Edit"); // Bisa pakai unicode pensil atau icon nanti
+//        btn_edit.setColor(Color.WHITE);
+//        btn_edit.setColorOver(new Color(245, 245, 245)); // hover abu muda
+//        btn_edit.setColorClick(new Color(230, 230, 230));
+//        btn_edit.setBorderColor(new Color(189, 189, 189)); // #BDBDBD
+//        btn_edit.setForeground(new Color(79, 79, 79)); // #4F4F4F
+//        btn_edit.setRadius(20);
+//
+//// Tombol DELETE
+//        btn_hapus.setText("🗑 Delete"); // Bisa pakai unicode icon, atau icon image nanti
+//        btn_hapus.setColor(Color.WHITE);
+//        btn_hapus.setColorOver(new Color(255, 230, 230)); // hover merah muda
+//        btn_hapus.setColorClick(new Color(255, 200, 200));
+//        btn_hapus.setBorderColor(new Color(234, 84, 85)); // Mirip merahnya
+//        btn_hapus.setForeground(new Color(235, 87, 87)); // #EB5757
+//        btn_hapus.setRadius(20);
+
 //        table.setEnabled(false);
     }
 
@@ -72,20 +106,27 @@ public class Form_Stock_Pupuk extends javax.swing.JPanel {
             Connection c = Koneksi.getKoneksi();
             Statement s = c.createStatement();
 
-            // Menggunakan JOIN untuk mengambil nama_pupuk berdasarkan id_pupuk
-            String sql = "SELECT sp.id_stock, dp.nama_pupuk, sp.jumlah_stock "
-                    + "FROM stock_pupuk sp "
-                    + "JOIN data_pupuk dp ON sp.id_pupuk = dp.id_pupuk";
+            // Ambil data terakhir dari kartu_stock untuk tiap pupuk berdasarkan id_kartu terbesar
+            String sql = "SELECT ks.id_kartu, ks.id_pupuk, dp.nama_pupuk, ks.sisa "
+                    + "FROM kartu_stock ks "
+                    + "JOIN data_pupuk dp ON ks.id_pupuk = dp.id_pupuk "
+                    + "INNER JOIN ( "
+                    + "    SELECT id_pupuk, MAX(id_kartu) AS max_id_kartu "
+                    + "    FROM kartu_stock "
+                    + "    GROUP BY id_pupuk "
+                    + ") latest ON ks.id_kartu = latest.max_id_kartu";
+
             ResultSet r = s.executeQuery(sql);
 
             while (r.next()) {
-                Object[] o = new Object[3]; // Sesuaikan ukuran array
-                o[0] = r.getString("id_stock");
-                o[1] = r.getString("nama_pupuk"); // Mengambil nama pupuk dari tabel data_pupuk
-                o[2] = r.getString("jumlah_stock");
+                Object[] row = new Object[3];
+                row[0] = r.getString("id_pupuk");        // ID Pupuk
+                row[1] = r.getString("nama_pupuk");      // Nama Pupuk
+                row[2] = r.getInt("sisa");               // Sisa
 
-                model.addRow(o);
+                model.addRow(row);
             }
+
             r.close();
             s.close();
         } catch (Exception e) {
@@ -99,11 +140,8 @@ public class Form_Stock_Pupuk extends javax.swing.JPanel {
     private void initComponents() {
 
         lb = new javax.swing.JLabel();
-        btnTambah = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         table = new javaswingdev.swing.table.Table();
-        btnEdit = new javax.swing.JButton();
-        btnHapus = new javax.swing.JButton();
         txtcari = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
 
@@ -113,13 +151,6 @@ public class Form_Stock_Pupuk extends javax.swing.JPanel {
         lb.setForeground(new java.awt.Color(125, 125, 125));
         lb.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         lb.setText("Data User");
-
-        btnTambah.setText("Tambah");
-        btnTambah.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnTambahActionPerformed(evt);
-            }
-        });
 
         table.setForeground(new java.awt.Color(0, 0, 255));
         table.setModel(new javax.swing.table.DefaultTableModel(
@@ -145,20 +176,6 @@ public class Form_Stock_Pupuk extends javax.swing.JPanel {
         });
         jScrollPane1.setViewportView(table);
 
-        btnEdit.setText("Edit");
-        btnEdit.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnEditActionPerformed(evt);
-            }
-        });
-
-        btnHapus.setText("Hapus");
-        btnHapus.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnHapusActionPerformed(evt);
-            }
-        });
-
         txtcari.setBackground(new java.awt.Color(255, 255, 255));
         txtcari.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyReleased(java.awt.event.KeyEvent evt) {
@@ -181,11 +198,6 @@ public class Form_Stock_Pupuk extends javax.swing.JPanel {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(lb)
                             .addGroup(layout.createSequentialGroup()
-                                .addComponent(btnTambah)
-                                .addGap(18, 18, 18)
-                                .addComponent(btnEdit)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(btnHapus)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                 .addComponent(jLabel1)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -199,9 +211,6 @@ public class Form_Stock_Pupuk extends javax.swing.JPanel {
                 .addComponent(lb, javax.swing.GroupLayout.PREFERRED_SIZE, 51, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(btnTambah, javax.swing.GroupLayout.PREFERRED_SIZE, 27, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnEdit)
-                    .addComponent(btnHapus)
                     .addComponent(txtcari, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel1))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -220,182 +229,6 @@ public class Form_Stock_Pupuk extends javax.swing.JPanel {
     private String selectedKodePupuk;
 
 
-    private void btnTambahActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnTambahActionPerformed
-        String idPupuk = null, namaPupuk = null, jumlahStock = null;
-        String SUrl, SUser, SPass;
-        SUrl = "jdbc:mysql://localhost:3306/studicase_pupuk";
-        SUser = "root";
-        SPass = "";
-
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
-            Statement st = con.createStatement();
-
-            // Ambil daftar pupuk dari database
-            String getPupukQuery = "SELECT id_pupuk, nama_pupuk FROM data_pupuk";
-            ResultSet rs = st.executeQuery(getPupukQuery);
-
-            List<String> pupukList = new ArrayList<>();
-            Map<String, String> pupukMap = new HashMap<>();
-
-            while (rs.next()) {
-                pupukList.add(rs.getString("nama_pupuk"));
-                pupukMap.put(rs.getString("nama_pupuk"), rs.getString("id_pupuk"));
-            }
-
-            rs.close();
-
-            if (pupukList.isEmpty()) {
-                JOptionPane.showMessageDialog(null, "Tidak ada data pupuk tersedia!", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            // Membuat panel untuk input data stok
-            JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
-            JComboBox<String> cbPupuk = new JComboBox<>(pupukList.toArray(new String[0]));
-            JTextField tfJumlahStock = new JTextField(15);
-
-            // Menambahkan komponen ke panel
-            panel.add(new JLabel("Pilih Pupuk:"));
-            panel.add(cbPupuk);
-            panel.add(new JLabel("Jumlah Stock:"));
-            panel.add(tfJumlahStock);
-
-            int result = JOptionPane.showConfirmDialog(null, panel,
-                    "Tambah Stock Pupuk", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
-            if (result == JOptionPane.OK_OPTION) {
-                namaPupuk = cbPupuk.getSelectedItem().toString();
-                idPupuk = pupukMap.get(namaPupuk);
-                jumlahStock = tfJumlahStock.getText().trim();
-
-                // Validasi jumlah stok
-                if (jumlahStock.isEmpty()) {
-                    JOptionPane.showMessageDialog(null, "Jumlah stok harus diisi!", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                } else if (!jumlahStock.matches("[0-9]+")) {
-                    JOptionPane.showMessageDialog(null, "Jumlah stok harus berupa angka!", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                int stokBaru = Integer.parseInt(jumlahStock);
-
-                // **Menentukan ID stok baru**
-                String getLastIdQuery = "SELECT id_stock FROM stock_pupuk ORDER BY id_stock DESC LIMIT 1";
-                ResultSet rsLastId = st.executeQuery(getLastIdQuery);
-                String newIdStock = "stk_001"; // Default jika belum ada data
-
-                if (rsLastId.next()) {
-                    String lastId = rsLastId.getString("id_stock"); // Misalnya stk_005
-                    int lastNumber = Integer.parseInt(lastId.split("_")[1]); // Ambil angka 5
-                    newIdStock = String.format("stk_%03d", lastNumber + 1); // Jadi stk_006
-                }
-                rsLastId.close();
-
-                // **Langsung Insert Tanpa Update**
-                String insertQuery = "INSERT INTO stock_pupuk (id_stock, id_pupuk, jumlah_stock) VALUES ('" + newIdStock + "', '" + idPupuk + "', " + stokBaru + ")";
-                st.execute(insertQuery);
-                JOptionPane.showMessageDialog(null, "Stok pupuk berhasil ditambahkan!");
-
-            } else {
-                JOptionPane.showMessageDialog(null, "Penambahan stok dibatalkan.");
-            }
-
-            st.close();
-            con.close();
-        } catch (Exception e) {
-            System.out.println("Error! " + e.getMessage());
-            e.printStackTrace();
-        }
-
-    }//GEN-LAST:event_btnTambahActionPerformed
-
-    private void btnEditActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEditActionPerformed
-        String SUrl = "jdbc:mysql://localhost:3306/studicase_pupuk";
-        String SUser = "root";
-        String SPass = "";
-
-        // Cek apakah sudah memilih data
-        if (selectedIdPupuk == null || selectedIdPupuk.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(null, "Please select a row from the table.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
-
-            // Membuat panel input
-            JPanel panel = new JPanel(new GridLayout(4, 2, 5, 5));
-            JTextField tfNamaPupuk = new JTextField(selectedNamaPupuk, 15);
-            JTextField tfHargaPupuk = new JTextField(selectedHargaPupuk, 15);
-
-            // ComboBox untuk memilih kode pupuk
-            String[] kodePupuks = {"P001", "P002", "P003", "P004"};
-            JComboBox<String> cbKodePupuk = new JComboBox<>(kodePupuks);
-            cbKodePupuk.setSelectedItem(selectedKodePupuk);
-
-            panel.add(new JLabel("Nama Pupuk:"));
-            panel.add(tfNamaPupuk);
-            panel.add(new JLabel("Harga Pupuk:"));
-            panel.add(tfHargaPupuk);
-            panel.add(new JLabel("Kode Pupuk:"));
-            panel.add(cbKodePupuk);
-
-            int result = JOptionPane.showConfirmDialog(null, panel, "Edit Data Pupuk", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
-            if (result == JOptionPane.OK_OPTION) {
-                String namaPupuk = tfNamaPupuk.getText().trim();
-                String hargaPupuk = tfHargaPupuk.getText().trim();
-                String kodePupuk = cbKodePupuk.getSelectedItem().toString();
-
-                // Validasi Nama Pupuk
-                if (namaPupuk.isEmpty() || !namaPupuk.matches("[a-zA-Z ]+")) {
-                    JOptionPane.showMessageDialog(null, "Nama Pupuk harus berisi huruf dan spasi saja.", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                // Validasi Harga Pupuk
-                double harga;
-                try {
-                    harga = Double.parseDouble(hargaPupuk);
-                    if (harga < 0) {
-                        JOptionPane.showMessageDialog(null, "Harga Pupuk tidak boleh negatif.", "Error", JOptionPane.ERROR_MESSAGE);
-                        return;
-                    }
-                } catch (NumberFormatException e) {
-                    JOptionPane.showMessageDialog(null, "Harga Pupuk harus berupa angka valid.", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                // Query Update menggunakan PreparedStatement untuk keamanan
-                String query = "UPDATE data_pupuk SET nama_pupuk = ?, harga_pupuk = ?, kode_pupuk = ? WHERE id_pupuk = ?";
-                PreparedStatement pst = con.prepareStatement(query);
-                pst.setString(1, namaPupuk);
-                pst.setDouble(2, harga);
-                pst.setString(3, kodePupuk);
-                pst.setString(4, selectedIdPupuk);
-
-                int updated = pst.executeUpdate();
-
-                if (updated > 0) {
-                    JOptionPane.showMessageDialog(null, "Data Pupuk berhasil diperbarui!");
-                    loadData(); // Panggil fungsi refresh tabel
-                } else {
-                    JOptionPane.showMessageDialog(null, "Gagal memperbarui data.", "Error", JOptionPane.ERROR_MESSAGE);
-                }
-
-                pst.close();
-                con.close();
-            } else {
-                JOptionPane.showMessageDialog(null, "Edit data dibatalkan.");
-            }
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Error: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }//GEN-LAST:event_btnEditActionPerformed
-
     private void mouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_mouseClicked
         int row = table.getSelectedRow();
 
@@ -411,51 +244,6 @@ public class Form_Stock_Pupuk extends javax.swing.JPanel {
         selectedHargaPupuk = table.getValueAt(row, 2).toString();
         selectedKodePupuk = table.getValueAt(row, 3).toString();
     }//GEN-LAST:event_mouseClicked
-
-    private void btnHapusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnHapusActionPerformed
-        String SUrl = "jdbc:mysql://localhost:3306/studicase_pupuk";
-        String SUser = "root";
-        String SPass = "";
-
-        // Cek apakah ada data yang dipilih
-        if (selectedIdPupuk == null || selectedIdPupuk.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(null, "Please select a row to delete.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        // Konfirmasi sebelum menghapus
-        int confirm = JOptionPane.showConfirmDialog(null, "Are you sure you want to delete this data?",
-                "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
-
-            // Query DELETE menggunakan PreparedStatement
-            String query = "DELETE FROM data_pupuk WHERE id_pupuk = ?";
-            PreparedStatement pst = con.prepareStatement(query);
-            pst.setString(1, selectedIdPupuk);
-
-            int deleted = pst.executeUpdate();
-
-            if (deleted > 0) {
-                JOptionPane.showMessageDialog(null, "Data Pupuk successfully deleted!");
-                loadData(); // Refresh tabel setelah penghapusan
-            } else {
-                JOptionPane.showMessageDialog(null, "Failed to delete data.", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-
-            pst.close();
-            con.close();
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Error: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
-
-    }//GEN-LAST:event_btnHapusActionPerformed
-
 
     public void searchUser(String keyword) {
         model.getDataVector().removeAllElements();
@@ -496,9 +284,6 @@ public class Form_Stock_Pupuk extends javax.swing.JPanel {
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btnEdit;
-    private javax.swing.JButton btnHapus;
-    private javax.swing.JButton btnTambah;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JLabel lb;

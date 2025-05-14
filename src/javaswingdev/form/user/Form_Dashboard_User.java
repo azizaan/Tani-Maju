@@ -3,6 +3,7 @@ package javaswingdev.form.user;
 import javaswingdev.form.admin.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.security.Timestamp;
 import javaswingdev.form.*;
 import javaswingdev.card.ModelCard;
 import javaswingdev.form.Koneksi;
@@ -197,6 +198,7 @@ public class Form_Dashboard_User extends javax.swing.JPanel {
         btn_out = new javax.swing.JButton();
         TXT1 = new javax.swing.JLabel();
         TXT2 = new javax.swing.JLabel();
+        btn_izin = new javax.swing.JButton();
 
         setOpaque(false);
 
@@ -270,6 +272,13 @@ public class Form_Dashboard_User extends javax.swing.JPanel {
         TXT2.setText("WAKTU CHECK OUT :");
         TXT2.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
 
+        btn_izin.setText("Izin");
+        btn_izin.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_izinActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout roundPanel1Layout = new javax.swing.GroupLayout(roundPanel1);
         roundPanel1.setLayout(roundPanel1Layout);
         roundPanel1Layout.setHorizontalGroup(
@@ -290,9 +299,11 @@ public class Form_Dashboard_User extends javax.swing.JPanel {
                                     .addComponent(txt_check_in)
                                     .addComponent(txt_check_out))
                                 .addGap(76, 76, 76)
-                                .addGroup(roundPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(btn_in, javax.swing.GroupLayout.PREFERRED_SIZE, 88, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(btn_out))))
+                                .addGroup(roundPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(btn_in, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(btn_out, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btn_izin, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE)))
                         .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
@@ -304,7 +315,8 @@ public class Form_Dashboard_User extends javax.swing.JPanel {
                 .addGroup(roundPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(txt_check_in)
                     .addComponent(btn_in)
-                    .addComponent(TXT1))
+                    .addComponent(TXT1)
+                    .addComponent(btn_izin))
                 .addGap(18, 18, 18)
                 .addGroup(roundPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(TXT2)
@@ -421,11 +433,24 @@ public class Form_Dashboard_User extends javax.swing.JPanel {
             String UserId = SessionManager.currentUserIDKasir;
             System.out.println(UserId);
 
-            // Cek apakah user sudah check-in hari ini
+            // Format tanggal hari ini
             SimpleDateFormat dateOnlyFormat = new SimpleDateFormat("yyyy-MM-dd");
             String todayDate = dateOnlyFormat.format(new Date());
+
+            // Cek apakah user sudah izin hari ini
+            String sqlCekIzin = "SELECT * FROM izin_pegawai WHERE id_user = ? AND DATE(tanggal_izin) = ?";
+            PreparedStatement psIzin = con.prepareStatement(sqlCekIzin);
+            psIzin.setString(1, UserId);
+            psIzin.setString(2, todayDate);
+            ResultSet rsIzin = psIzin.executeQuery();
+
+            if (rsIzin.next()) {
+                JOptionPane.showMessageDialog(null, "Anda sudah mengajukan izin hari ini, tidak bisa check-in.");
+                return;
+            }
+
+            // Cek apakah user sudah check-in hari ini
             String sqlCheck = "SELECT check_in FROM absensi_pegawai WHERE user_id = ? AND DATE(check_in) = ?";
- 
             PreparedStatement psCheck = con.prepareStatement(sqlCheck);
             psCheck.setString(1, UserId);
             psCheck.setString(2, todayDate);
@@ -438,7 +463,7 @@ public class Form_Dashboard_User extends javax.swing.JPanel {
                 return;
             }
 
-            // Jika belum check-in, lakukan check-in
+            // Jika belum check-in dan belum izin, lakukan check-in
             String idAbsen = UUID.randomUUID().toString();
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             String waktuCheckIn = sdf.format(new Date());
@@ -456,6 +481,7 @@ public class Form_Dashboard_User extends javax.swing.JPanel {
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Error saat check-in: " + e.getMessage());
         }
+
     }//GEN-LAST:event_btn_inActionPerformed
 
     private void btn_outActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_outActionPerformed
@@ -485,10 +511,60 @@ public class Form_Dashboard_User extends javax.swing.JPanel {
 
     }//GEN-LAST:event_btn_outActionPerformed
 
+    private void btn_izinActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_izinActionPerformed
+        try {
+            Connection con = Koneksi.getKoneksi();
+            String UserId = SessionManager.currentUserIDKasir;
+            System.out.println(UserId);
+
+            // Format tanggal hari ini
+            SimpleDateFormat dateOnlyFormat = new SimpleDateFormat("yyyy-MM-dd");
+            String todayDate = dateOnlyFormat.format(new Date());
+
+            // Cek apakah sudah izin hari ini
+            String sqlCek = "SELECT * FROM izin_pegawai WHERE id_user = ? AND DATE(tanggal_izin) = ?";
+            PreparedStatement psCek = con.prepareStatement(sqlCek);
+            psCek.setString(1, UserId);
+            psCek.setString(2, todayDate);
+            ResultSet rs = psCek.executeQuery();
+
+            if (rs.next()) {
+                JOptionPane.showMessageDialog(null, "Anda sudah mengajukan izin hari ini!\nAlasan: " + rs.getString("alasan_izin"));
+                return;
+            }
+
+            // Input alasan izin (bisa kamu ganti dengan TextField jika pakai form input)
+            String alasan = JOptionPane.showInputDialog("Masukkan alasan izin:");
+            if (alasan == null || alasan.trim().isEmpty()) {
+                JOptionPane.showMessageDialog(null, "Alasan tidak boleh kosong.");
+                return;
+            }
+
+            String idIzin = UUID.randomUUID().toString();
+            String tanggalIzin = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+
+            // id_absen bisa null atau kosong karena belum absen
+            String sqlInsert = "INSERT INTO izin_pegawai (id_izin, tanggal_izin, alasan_izin, id_absen, user_id) VALUES (?, ?, ?, ?, ?)";
+            PreparedStatement psInsert = con.prepareStatement(sqlInsert);
+            psInsert.setString(1, idIzin);
+            psInsert.setString(2, tanggalIzin);
+            psInsert.setString(3, alasan);
+            psInsert.setString(4, null); // karena belum check in
+            psInsert.setString(5, UserId);
+            psInsert.executeUpdate();
+
+            JOptionPane.showMessageDialog(null, "Izin berhasil diajukan!");
+            loadAbsensiTable(); // kalau kamu ingin tampilkan di tabel
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Error saat mengajukan izin: " + e.getMessage());
+        }
+    }//GEN-LAST:event_btn_izinActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel TXT1;
     private javax.swing.JLabel TXT2;
     private javax.swing.JButton btn_in;
+    private javax.swing.JButton btn_izin;
     private javax.swing.JButton btn_out;
     private javaswingdev.card.Card card1;
     private javaswingdev.card.Card card2;
