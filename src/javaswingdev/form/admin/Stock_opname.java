@@ -501,6 +501,7 @@ public class Stock_opname extends javax.swing.JPanel {
             JOptionPane.showMessageDialog(null, "Gagal cari data: " + e.getMessage());
             e.printStackTrace();
         }
+        System.out.println("branch hahay");
     }
 
 
