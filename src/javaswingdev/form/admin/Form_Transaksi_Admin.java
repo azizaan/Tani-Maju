@@ -610,10 +610,10 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
         try {
             Connection c = Koneksi.getKoneksi();
             String sql = "SELECT dp.kode_pupuk, dp.nama_pupuk, dp.harga_pupuk, "
-                    + "COALESCE(ks.saldo_akhir, 0) AS jumlah_stock "
+                    + "COALESCE(ks.sisa, 0) AS jumlah_stock "
                     + "FROM data_pupuk dp "
                     + "LEFT JOIN ("
-                    + "   SELECT id_pupuk, saldo_akhir "
+                    + "   SELECT id_pupuk, sisa "
                     + "   FROM kartu_stock ks1 "
                     + "   WHERE ks1.tanggal = ("
                     + "       SELECT MAX(tanggal) FROM kartu_stock ks2 WHERE ks2.id_pupuk = ks1.id_pupuk"

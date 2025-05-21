@@ -198,101 +198,222 @@ public class FormBayar extends JFrame {
             }
         }
     }
-
+    
     private void simpanTransaksi() {
-        String pelanggan = txtPelanggan.getText().trim();
-        String userId = SessionManager.currentUserIDKasir;
-        double grandTotal = getDouble(txtGrandTotal.getText().replace("Rp ", ""));
-        int diskon = (int) spinDiskon.getValue();
+    String pelanggan = txtPelanggan.getText().trim();
+    String userId = SessionManager.currentUserIDKasir;
+    String grandTotalStr = txtGrandTotal.getText().replace("Rp ", "").trim();
+    String dibayarStr = txtDibayar.getText().replace("Rp ", "").trim();
+    int diskon = (int) spinDiskon.getValue();
 
-        if (pelanggan.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Pelanggan harus diisi!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+    if (pelanggan.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Pelanggan harus diisi!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+        return;
+    }
+
+    if (dibayarStr.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Jumlah yang dibayar harus diisi!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+        return;
+    }
+
+    double grandTotal;
+    double dibayar;
+
+    try {
+        grandTotal = getDouble(grandTotalStr);
+        dibayar = getDouble(dibayarStr);
+    } catch (NumberFormatException e) {
+        JOptionPane.showMessageDialog(this, "Format angka tidak valid pada jumlah dibayar atau total!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+        return;
+    }
+
+    if (dibayar < grandTotal) {
+        JOptionPane.showMessageDialog(this, "Jumlah yang dibayar kurang dari total yang harus dibayar!", "Pembayaran Tidak Cukup", JOptionPane.WARNING_MESSAGE);
+        return;
+    }
+
+    try (Connection con = Koneksi.getKoneksi()) {
+        if (con == null || con.isClosed()) {
+            JOptionPane.showMessageDialog(this, "Koneksi ke database gagal.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        try (Connection con = Koneksi.getKoneksi()) {
-            if (con == null || con.isClosed()) {
-                JOptionPane.showMessageDialog(this, "Koneksi ke database gagal.", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
+        con.setAutoCommit(false);
+
+        String transaksiID = generateTransaksiID(con);
+
+        String sqlTransaksi = "INSERT INTO transaksi (transaksi_id, user_id, nama_pembeli, total_harga, diskon, status, waktu_transaksi) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
+
+        try (PreparedStatement pstTransaksi = con.prepareStatement(sqlTransaksi, PreparedStatement.RETURN_GENERATED_KEYS)) {
+            pstTransaksi.setString(1, transaksiID);
+            pstTransaksi.setString(2, userId);
+            pstTransaksi.setString(3, pelanggan);
+            pstTransaksi.setDouble(4, grandTotal);
+            pstTransaksi.setInt(5, diskon);
+            pstTransaksi.setString(6, "Lunas");
+
+            int rowsInserted = pstTransaksi.executeUpdate();
+            if (rowsInserted == 0) {
+                throw new SQLException("Gagal menyimpan transaksi.");
             }
 
-            con.setAutoCommit(false);
+            String sqlDetail = "INSERT INTO transaksi_detail (transaksi_id, id_pupuk, jumlah_beli) VALUES (?, ?, ?)";
+            String sqlInsertKartuStock = "INSERT INTO kartu_stock (id_kartu, id_pupuk, tanggal, jumlah_keluar, sisa, keterangan) VALUES (?, ?, CURRENT_DATE, ?, ?, ?)";
 
-            String transaksiID = generateTransaksiID(con);
+            try (PreparedStatement pstDetail = con.prepareStatement(sqlDetail);
+                 PreparedStatement pstInsertKartu = con.prepareStatement(sqlInsertKartuStock)) {
 
-            String sqlTransaksi = "INSERT INTO transaksi (transaksi_id, user_id, nama_pembeli, total_harga, diskon, status, waktu_transaksi) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
+                for (String[] item : dataTransaksi) {
+                    String namaPupuk = item[0];
+                    int jumlah = Integer.parseInt(item[2]);
 
-            try (PreparedStatement pstTransaksi = con.prepareStatement(sqlTransaksi, PreparedStatement.RETURN_GENERATED_KEYS)) {
-                pstTransaksi.setString(1, transaksiID);
-                pstTransaksi.setString(2, userId);
-                pstTransaksi.setString(3, pelanggan);
-                pstTransaksi.setDouble(4, grandTotal);
-                pstTransaksi.setInt(5, diskon);
-                pstTransaksi.setString(6, "Lunas");
-
-                int rowsInserted = pstTransaksi.executeUpdate();
-                if (rowsInserted == 0) {
-                    throw new SQLException("Gagal menyimpan transaksi.");
-                }
-
-                String sqlDetail = "INSERT INTO transaksi_detail (transaksi_id, id_pupuk, jumlah_beli) VALUES (?, ?, ?)";
-                String sqlInsertKartuStock = "INSERT INTO kartu_stock (id_kartu, id_pupuk, tanggal, jumlah_keluar, sisa, keterangan) VALUES (?, ?, CURRENT_DATE, ?, ?, ?)";
-
-                try (PreparedStatement pstDetail = con.prepareStatement(sqlDetail); PreparedStatement pstInsertKartu = con.prepareStatement(sqlInsertKartuStock)) {
-
-                    for (String[] item : dataTransaksi) {
-                        String namaPupuk = item[0];
-                        int jumlah = Integer.parseInt(item[2]);
-
-                        String idPupuk = getIdPupuk(con, namaPupuk);
-                        if (idPupuk == null) {
-                            throw new SQLException("ID pupuk untuk " + namaPupuk + " tidak ditemukan.");
-                        }
-
-                        int stokSebelum = getStokTerakhir(con, idPupuk);
-                        int stokBaru = stokSebelum - jumlah;
-                        String idKartu = generateIdKartu(con); // pastikan method ini Anda buat
-
-                        // simpan detail transaksi
-                        pstDetail.setString(1, transaksiID);
-                        pstDetail.setString(2, idPupuk);
-                        pstDetail.setInt(3, jumlah);
-                        pstDetail.addBatch();
-
-//                        // simpan ke kartu_stock sebagai transaksi keluar
-//                        pstInsertKartu.setString(1, idKartu);
-//                        pstInsertKartu.setString(2, idPupuk);
-//                        pstInsertKartu.setInt(3, jumlah); // jumlah_keluar
-//                        pstInsertKartu.setInt(4, stokBaru); // sisa stok
-//                        pstInsertKartu.setString(5, "Penjualan");
-//                        pstInsertKartu.addBatch();
+                    String idPupuk = getIdPupuk(con, namaPupuk);
+                    if (idPupuk == null) {
+                        throw new SQLException("ID pupuk untuk " + namaPupuk + " tidak ditemukan.");
                     }
 
-                    pstDetail.executeBatch();
-                    pstInsertKartu.executeBatch();
+                    int stokSebelum = getStokTerakhir(con, idPupuk);
+                    int stokBaru = stokSebelum - jumlah;
+                    String idKartu = generateIdKartu(con);
+
+                    // Simpan detail transaksi
+                    pstDetail.setString(1, transaksiID);
+                    pstDetail.setString(2, idPupuk);
+                    pstDetail.setInt(3, jumlah);
+                    pstDetail.addBatch();
+
+                    // Simpan ke kartu_stock
+//                    pstInsertKartu.setString(1, idKartu);
+//                    pstInsertKartu.setString(2, idPupuk);
+//                    pstInsertKartu.setInt(3, jumlah);
+//                    pstInsertKartu.setInt(4, stokBaru);
+//                    pstInsertKartu.setString(5, "Penjualan");
+//                    pstInsertKartu.addBatch();
                 }
 
-                con.commit();
-                JOptionPane.showMessageDialog(this, "Pembayaran dan transaksi berhasil disimpan!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
-                formTransaksiAdmin.refreshTable();
-                double dibayar = getDouble(txtDibayar.getText().replace("Rp ", ""));
-                double subtotal = getDouble(txtSubTotal.getText().replace("Rp ", ""));
-                StrukPembelian.simpanStrukPDF(transaksiID, dataTransaksi, pelanggan, grandTotal, dibayar, diskon, subtotal);
-
-
-                dispose();
-            } catch (SQLException e) {
-                if (con != null && !con.isClosed()) {
-                    con.rollback();
-                }
-                e.printStackTrace();
-                JOptionPane.showMessageDialog(this, "Error: " + e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
+                pstDetail.executeBatch();
+                pstInsertKartu.executeBatch();
             }
+
+            con.commit();
+            JOptionPane.showMessageDialog(this, "Pembayaran dan transaksi berhasil disimpan!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+
+            formTransaksiAdmin.refreshTable();
+
+            double subtotal = getDouble(txtSubTotal.getText().replace("Rp ", ""));
+            StrukPembelian.simpanStrukPDF(transaksiID, dataTransaksi, pelanggan, grandTotal, dibayar, diskon, subtotal);
+
+            dispose();
+
         } catch (SQLException e) {
+            if (con != null && !con.isClosed()) {
+                con.rollback();
+            }
             e.printStackTrace();
             JOptionPane.showMessageDialog(this, "Error: " + e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
         }
+
+    } catch (SQLException e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Error: " + e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
     }
+}
+
+
+//    private void simpanTransaksi() {
+//        String pelanggan = txtPelanggan.getText().trim();
+//        String userId = SessionManager.currentUserIDKasir;
+//        double grandTotal = getDouble(txtGrandTotal.getText().replace("Rp ", ""));
+//        int diskon = (int) spinDiskon.getValue();
+//
+//        if (pelanggan.isEmpty()) {
+//            JOptionPane.showMessageDialog(this, "Pelanggan harus diisi!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+//            return;
+//        }
+//
+//        try (Connection con = Koneksi.getKoneksi()) {
+//            if (con == null || con.isClosed()) {
+//                JOptionPane.showMessageDialog(this, "Koneksi ke database gagal.", "Error", JOptionPane.ERROR_MESSAGE);
+//                return;
+//            }
+//
+//            con.setAutoCommit(false);
+//
+//            String transaksiID = generateTransaksiID(con);
+//
+//            String sqlTransaksi = "INSERT INTO transaksi (transaksi_id, user_id, nama_pembeli, total_harga, diskon, status, waktu_transaksi) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
+//
+//            try (PreparedStatement pstTransaksi = con.prepareStatement(sqlTransaksi, PreparedStatement.RETURN_GENERATED_KEYS)) {
+//                pstTransaksi.setString(1, transaksiID);
+//                pstTransaksi.setString(2, userId);
+//                pstTransaksi.setString(3, pelanggan);
+//                pstTransaksi.setDouble(4, grandTotal);
+//                pstTransaksi.setInt(5, diskon);
+//                pstTransaksi.setString(6, "Lunas");
+//
+//                int rowsInserted = pstTransaksi.executeUpdate();
+//                if (rowsInserted == 0) {
+//                    throw new SQLException("Gagal menyimpan transaksi.");
+//                }
+//
+//                String sqlDetail = "INSERT INTO transaksi_detail (transaksi_id, id_pupuk, jumlah_beli) VALUES (?, ?, ?)";
+//                String sqlInsertKartuStock = "INSERT INTO kartu_stock (id_kartu, id_pupuk, tanggal, jumlah_keluar, sisa, keterangan) VALUES (?, ?, CURRENT_DATE, ?, ?, ?)";
+//
+//                try (PreparedStatement pstDetail = con.prepareStatement(sqlDetail); PreparedStatement pstInsertKartu = con.prepareStatement(sqlInsertKartuStock)) {
+//
+//                    for (String[] item : dataTransaksi) {
+//                        String namaPupuk = item[0];
+//                        int jumlah = Integer.parseInt(item[2]);
+//
+//                        String idPupuk = getIdPupuk(con, namaPupuk);
+//                        if (idPupuk == null) {
+//                            throw new SQLException("ID pupuk untuk " + namaPupuk + " tidak ditemukan.");
+//                        }
+//
+//                        int stokSebelum = getStokTerakhir(con, idPupuk);
+//                        int stokBaru = stokSebelum - jumlah;
+//                        String idKartu = generateIdKartu(con); // pastikan method ini Anda buat
+//
+//                        // simpan detail transaksi
+//                        pstDetail.setString(1, transaksiID);
+//                        pstDetail.setString(2, idPupuk);
+//                        pstDetail.setInt(3, jumlah);
+//                        pstDetail.addBatch();
+//
+////                        // simpan ke kartu_stock sebagai transaksi keluar
+////                        pstInsertKartu.setString(1, idKartu);
+////                        pstInsertKartu.setString(2, idPupuk);
+////                        pstInsertKartu.setInt(3, jumlah); // jumlah_keluar
+////                        pstInsertKartu.setInt(4, stokBaru); // sisa stok
+////                        pstInsertKartu.setString(5, "Penjualan");
+////                        pstInsertKartu.addBatch();
+//                    }
+//
+//                    pstDetail.executeBatch();
+//                    pstInsertKartu.executeBatch();
+//                }
+//
+//                con.commit();
+//                JOptionPane.showMessageDialog(this, "Pembayaran dan transaksi berhasil disimpan!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+//                formTransaksiAdmin.refreshTable();
+//                double dibayar = getDouble(txtDibayar.getText().replace("Rp ", ""));
+//                double subtotal = getDouble(txtSubTotal.getText().replace("Rp ", ""));
+//                StrukPembelian.simpanStrukPDF(transaksiID, dataTransaksi, pelanggan, grandTotal, dibayar, diskon, subtotal);
+//
+//
+//                dispose();
+//            } catch (SQLException e) {
+//                if (con != null && !con.isClosed()) {
+//                    con.rollback();
+//                }
+//                e.printStackTrace();
+//                JOptionPane.showMessageDialog(this, "Error: " + e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
+//            }
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
+//        }
+//    }
 
     private int getStokTerakhir(Connection con, String idPupuk) throws SQLException {
         String sql = "SELECT sisa FROM kartu_stock WHERE id_pupuk = ? ORDER BY tanggal DESC, id_kartu DESC LIMIT 1";
