@@ -1,12 +1,18 @@
 package javaswingdev.form.admin;
 
+import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.*;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.FontFactory;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.Phrase;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
+//import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
@@ -18,6 +24,7 @@ import java.awt.print.Printable;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -45,6 +52,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import javax.swing.JFileChooser;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 
@@ -310,7 +318,7 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
 
     private void btn_tambahActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_tambahActionPerformed
         String namaPupuk, hargaPupuk, kodePupuk, query;
-        String idPupuk = null, idStock = null;
+        String idPupuk = null;
         String SUrl, SUser, SPass;
         SUrl = "jdbc:MySQL://localhost:3306/studicase_pupuk";
         SUser = "root";
@@ -321,7 +329,7 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
             Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
             Statement st = con.createStatement();
 
-            // Membuat panel untuk input data
+            // Panel input data
             JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
             JTextField tfNamaPupuk = new JTextField(15);
             JTextField tfHargaPupuk = new JTextField(15);
@@ -338,7 +346,7 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
                 namaPupuk = tfNamaPupuk.getText().trim();
                 hargaPupuk = tfHargaPupuk.getText().trim();
 
-                // Validasi input
+                // Validasi
                 if (namaPupuk.isEmpty() || !namaPupuk.matches("[a-zA-Z ]+")) {
                     JOptionPane.showMessageDialog(null, "Nama Pupuk tidak valid!", "Error", JOptionPane.ERROR_MESSAGE);
                     return;
@@ -377,24 +385,8 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
                         + ", '" + hargaPupuk + "', '" + kodePupuk + "')";
                 st.execute(query);
 
-                // Generate ID Stock Baru
-                String getLastStockId = "SELECT id_stock FROM stock_pupuk ORDER BY id_stock DESC LIMIT 1";
-                rs = st.executeQuery(getLastStockId);
-                if (rs.next()) {
-                    String lastStockId = rs.getString("id_stock");
-                    int num = Integer.parseInt(lastStockId.substring(4));
-                    idStock = String.format("stk_%03d", num + 1);
-                } else {
-                    idStock = "stk_001";
-                }
-                rs.close();
-
-//                // Insert ke tabel stock_pupuk dengan jumlah 0
-//                String insertStock = "INSERT INTO stock_pupuk (id_stock, id_pupuk, jumlah_stock) VALUES ('" + idStock + "', '" + idPupuk + "', 0)";
-//                st.execute(insertStock);
-//
-//                JOptionPane.showMessageDialog(null, "Data pupuk berhasil ditambahkan.");
-                loadData(); // fungsi refresh tabel atau data
+                JOptionPane.showMessageDialog(null, "Data pupuk berhasil ditambahkan.");
+                loadData(); // Refresh data tabel
             } else {
                 JOptionPane.showMessageDialog(null, "Penambahan data dibatalkan.");
             }
@@ -406,6 +398,7 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
             System.out.println("Error! " + e.getMessage());
             e.printStackTrace();
         }
+
     }//GEN-LAST:event_btn_tambahActionPerformed
 
     private void btn_editActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_editActionPerformed
@@ -535,22 +528,19 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
     }//GEN-LAST:event_btn_hapusActionPerformed
 
     private void btn_cetakActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_cetakActionPerformed
-// Ambil opsi cetak
         String[] options = {"Cetak Satu", "Cetak Beberapa", "Cetak Semua"};
         int choice = JOptionPane.showOptionDialog(null, "Pilih opsi cetak:", "Opsi Cetak",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
                 null, options, options[0]);
 
         List<String> idPupukList = new ArrayList<>();
-
-// Misalnya data diambil dari database
-        Map<String, String> pupukMap = getPupukMap(); // Key = id, Value = nama
+        Map<String, String> pupukMap = getPupukMap(); // Ambil dari DB (id -> nama)
 
         if (choice == 0) { // Cetak Satu
             String[] namaPupukArray = pupukMap.values().toArray(new String[0]);
             String selectedName = (String) JOptionPane.showInputDialog(null, "Pilih pupuk yang ingin dicetak:", "Pilih Pupuk",
-                    JOptionPane.QUESTION_MESSAGE, null,
-                    namaPupukArray, namaPupukArray[0]);
+                    JOptionPane.QUESTION_MESSAGE, null, namaPupukArray, namaPupukArray[0]);
+
             if (selectedName != null) {
                 for (Map.Entry<String, String> entry : pupukMap.entrySet()) {
                     if (entry.getValue().equals(selectedName)) {
@@ -599,68 +589,54 @@ public class Form_Data_Pupuk extends javax.swing.JPanel {
             return;
         }
 
-// Cetak barcode
-        PrinterJob job = PrinterJob.getPrinterJob();
-        job.setPrintable(new Printable() {
-            @Override
-            public int print(Graphics g, PageFormat pf, int pageIndex) throws PrinterException {
-                int columns = 2;
-                int rows = 5;
-                int barcodesPerPage = columns * rows;
-                int barcodeWidth = 200;
-                int barcodeHeight = 100;
-                int paddingX = 20;
-                int paddingY = 20;
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Simpan sebagai PDF");
+        chooser.setSelectedFile(new File("barcode_pupuk.pdf"));
+        int userSelection = chooser.showSaveDialog(null);
 
-                int startIndex = pageIndex * barcodesPerPage;
-                if (startIndex >= idPupukList.size()) {
-                    return Printable.NO_SUCH_PAGE;
-                }
-
-                Graphics2D g2d = (Graphics2D) g;
-                g2d.translate(pf.getImageableX(), pf.getImageableY());
-
-                for (int i = 0; i < barcodesPerPage && (startIndex + i) < idPupukList.size(); i++) {
-                    int row = i / columns;
-                    int col = i % columns;
-
-                    int x = col * (barcodeWidth + paddingX);
-                    int y = row * (barcodeHeight + paddingY);
-
-                    String idPupuk = idPupukList.get(startIndex + i);
-                    String barcodePath = BarcodeGenerator.saveBarcodeImage(idPupuk);
-                    if (barcodePath == null) {
-                        continue;
-                    }
-
-                    try {
-                        BufferedImage barcode = ImageIO.read(new File(barcodePath));
-                        g2d.drawImage(barcode, x, y, barcodeWidth, barcodeHeight - 20, null);
-
-                        String namaPupuk = pupukMap.getOrDefault(idPupuk, idPupuk);
-                        g2d.setFont(new Font("Arial", Font.BOLD, 12));
-                        int stringWidth = g2d.getFontMetrics().stringWidth(namaPupuk);
-                        g2d.drawString(namaPupuk, x + (barcodeWidth - stringWidth) / 2, y + barcodeHeight - 5);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-
-                return Printable.PAGE_EXISTS;
-            }
-        });
-
-        boolean doPrint = job.printDialog();
-        if (doPrint) {
-            try {
-                job.print();
-                JOptionPane.showMessageDialog(null, "Barcode berhasil dicetak!");
-            } catch (PrinterException e) {
-                e.printStackTrace();
-                JOptionPane.showMessageDialog(null, "Terjadi kesalahan saat mencetak: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
+        if (userSelection != JFileChooser.APPROVE_OPTION) {
+            return;
         }
 
+        File file = chooser.getSelectedFile();
+
+        try {
+            Document document = new Document(PageSize.A4, 50, 50, 50, 50); // Margin
+            PdfWriter.getInstance(document, new FileOutputStream(file));
+            document.open();
+
+            for (String idPupuk : idPupukList) {
+                String barcodePath = BarcodeGenerator.saveBarcodeImage(idPupuk);
+                if (barcodePath == null) {
+                    continue;
+                }
+
+                // Tambahkan barcode
+                Image barcodeImage = Image.getInstance(barcodePath);
+                barcodeImage.scaleToFit(200, 80);
+                barcodeImage.setAlignment(Image.ALIGN_CENTER);
+                document.add(barcodeImage);
+
+                // Tambahkan nama pupuk
+                String namaPupuk = pupukMap.getOrDefault(idPupuk, idPupuk);
+                Font fontNama = FontFactory.getFont(FontFactory.TIMES_ROMAN, 12);
+                Paragraph nama = new Paragraph(namaPupuk, fontNama);
+
+                nama.setAlignment(Element.ALIGN_CENTER);
+                document.add(nama);
+
+                // Tambahkan spasi antar barcode
+                document.add(new Paragraph(" "));
+                document.add(Chunk.NEWLINE);
+            }
+
+            document.close();
+            JOptionPane.showMessageDialog(null, "Barcode berhasil disimpan ke PDF!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Gagal menyimpan PDF: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }//GEN-LAST:event_btn_cetakActionPerformed
 
     public Map<String, String> getPupukMap() {

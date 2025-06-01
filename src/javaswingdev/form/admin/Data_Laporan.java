@@ -125,7 +125,7 @@ public class Data_Laporan extends javax.swing.JPanel {
         table = new javaswingdev.swing.table.Table();
         txtcari = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
-        btnCetak = new javax.swing.JButton();
+        btnCetak = new button.MyButton();
 
         setOpaque(false);
 
@@ -169,6 +169,7 @@ public class Data_Laporan extends javax.swing.JPanel {
         jLabel1.setText("Cari Data");
 
         btnCetak.setText("Cetak Transaksi");
+        btnCetak.setBorderPainted(false);
         btnCetak.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnCetakActionPerformed(evt);
@@ -187,7 +188,7 @@ public class Data_Laporan extends javax.swing.JPanel {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(lb)
                             .addGroup(layout.createSequentialGroup()
-                                .addComponent(btnCetak)
+                                .addComponent(btnCetak, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                 .addComponent(jLabel1)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -203,7 +204,7 @@ public class Data_Laporan extends javax.swing.JPanel {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(txtcari, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel1)
-                    .addComponent(btnCetak))
+                    .addComponent(btnCetak, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -348,22 +349,7 @@ public class Data_Laporan extends javax.swing.JPanel {
             int bulanIndex = mapBulan.get(bulanDipilih);
             String bulanString = (bulanIndex < 10) ? "0" + bulanIndex : String.valueOf(bulanIndex);
 
-            // Query untuk transaksi
-            String sql = "SELECT "
-                    + "    t.transaksi_id, "
-                    + "    t.waktu_transaksi, "
-                    + "    t.diskon, "
-                    + "    SUM(d.jumlah_beli * dp.harga_pupuk) AS harga_normal, "
-                    + // Total harga sebelum diskon
-                    "    (SUM(d.jumlah_beli * dp.harga_pupuk) * (t.diskon / 100.0)) AS diskon_nominal, "
-                    + // Diskon dalam nominal
-                    "    (SUM(d.jumlah_beli * dp.harga_pupuk) - (SUM(d.jumlah_beli * dp.harga_pupuk) * (t.diskon / 100.0))) AS total_harga "
-                    + // Harga setelah diskon
-                    "FROM transaksi t "
-                    + "JOIN transaksi_detail d ON t.transaksi_id = d.transaksi_id "
-                    + "JOIN data_pupuk dp ON d.id_pupuk = dp.id_pupuk "
-                    + "WHERE YEAR(t.waktu_transaksi) = ? AND MONTH(t.waktu_transaksi) = ? "
-                    + "GROUP BY t.transaksi_id, t.waktu_transaksi, t.diskon;";
+            String sql = "SELECT * FROM view_laporan_transaksi WHERE YEAR(waktu_transaksi) = ? AND MONTH(waktu_transaksi) = ?";
 
             PreparedStatement ps = c.prepareStatement(sql);
             ps.setString(1, tahunDipilih);
@@ -379,7 +365,7 @@ public class Data_Laporan extends javax.swing.JPanel {
             Sheet sheet = workbook.createSheet("Laporan " + bulanDipilih + " " + tahunDipilih);
 
             Row headerRow = sheet.createRow(0);
-            String[] columns = {"ID Transaksi", "Tanggal", "Nama Pupuk", "Jumlah Beli", "Harga Pupuk", "Total Harga Awal", "Diskon", "Total Harga Akhir", "Keuntungan"};
+            String[] columns = {"ID Transaksi", "Tanggal", "Nama Pupuk", "Jumlah Beli", "Harga Pupuk", "Total Harga Awal", "Diskon (%)", "Diskon (Nominal)", "Total Harga Akhir", "Keuntungan"};
 
             for (int i = 0; i < columns.length; i++) {
                 Cell cell = headerRow.createCell(i);
@@ -394,29 +380,43 @@ public class Data_Laporan extends javax.swing.JPanel {
             while (rs.next()) {
                 String transaksiId = rs.getString("transaksi_id");
                 String waktuTransaksi = rs.getString("waktu_transaksi");
+                String namaPupuk = rs.getString("nama_pupuk");
                 double diskon = rs.getDouble("diskon"); // Diskon dalam persen
+                double jumlahBeli = rs.getDouble("jumlah_beli"); // Diskon dalam persen
                 double hargaNormal = rs.getDouble("harga_normal"); // Harga sebelum diskon
+                double hargaPupuk = rs.getDouble("harga_pupuk"); // Harga sebelum diskon
                 double diskonNominal = rs.getDouble("diskon_nominal"); // Diskon dalam Rupiah
                 double totalHarga = rs.getDouble("total_harga"); // Harga setelah diskon
+                double laba = rs.getDouble("laba"); // Harga setelah diskon
 
                 // Tambahkan ke total keseluruhan
                 totalUang += totalHarga;
+                totalKeuntungan += laba;
 
                 // Tambahkan data ke Excel
                 Row row = sheet.createRow(rowNum++);
                 row.createCell(0).setCellValue(transaksiId);
                 row.createCell(1).setCellValue(waktuTransaksi);
-                row.createCell(2).setCellValue(diskon + "%"); // Menampilkan diskon dalam persen
-                row.createCell(3).setCellValue(formatRupiah.format(hargaNormal)); // Harga sebelum diskon
-                row.createCell(4).setCellValue(formatRupiah.format(diskonNominal)); // Diskon dalam Rupiah
-                row.createCell(5).setCellValue(formatRupiah.format(totalHarga)); // Total setelah diskon
+                row.createCell(2).setCellValue(namaPupuk); // Menampilkan diskon dalam persen
+                row.createCell(3).setCellValue(jumlahBeli); // Menampilkan diskon dalam persen
+                row.createCell(4).setCellValue(formatRupiah.format(hargaPupuk)); // Harga pupuk
+                row.createCell(5).setCellValue(formatRupiah.format(hargaNormal)); // Harga sebelum diskon
+                row.createCell(6).setCellValue(diskon + "%"); // Menampilkan diskon dalam persen
+                row.createCell(7).setCellValue(formatRupiah.format(diskonNominal)); // Diskon dalam Rupiah
+                row.createCell(8).setCellValue(formatRupiah.format(totalHarga)); // Total setelah diskon
+                row.createCell(9).setCellValue(formatRupiah.format(laba));
             }
 
             rs.close();
-            // Menampilkan total uang di akhir laporan
+// Menampilkan total uang di akhir laporan
             Row totalRow = sheet.createRow(rowNum++);
-            totalRow.createCell(4).setCellValue("TOTAL:");
-            totalRow.createCell(5).setCellValue(formatRupiah.format(totalUang));
+            totalRow.createCell(8).setCellValue("TOTAL:");
+            totalRow.createCell(9).setCellValue(formatRupiah.format(totalKeuntungan));
+
+// Auto-size kolom sesuai konten
+            for (int i = 0; i < columns.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
 
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setDialogTitle("Simpan Laporan");
@@ -510,7 +510,7 @@ public class Data_Laporan extends javax.swing.JPanel {
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btnCetak;
+    private button.MyButton btnCetak;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JLabel lb;

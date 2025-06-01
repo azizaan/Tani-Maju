@@ -20,6 +20,7 @@ import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -34,6 +35,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import java.sql.PreparedStatement; // Import PreparedStatement
+import java.sql.SQLException;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import java.text.NumberFormat;
@@ -70,14 +72,15 @@ public class Stock_opname extends javax.swing.JPanel {
 
         table.setModel(model);
 
-        model.addColumn("id Pupuk");
-        model.addColumn("Nama Pupuk");
-        model.addColumn("Harga Pupuk");
-        model.addColumn("Stock Sistem");
-        model.addColumn("Stock Fisik");
-        model.addColumn("Tanggal Opname");
-        model.addColumn("Total Selisih");
-        model.addColumn("Keterangan");
+        model.addColumn("id Opname");      // kolom 0
+        model.addColumn("id Pupuk");       // kolom 1
+        model.addColumn("Nama Pupuk");     // kolom 2
+        model.addColumn("Harga Pupuk");    // kolom 3
+        model.addColumn("Stock Sistem");   // kolom 4
+        model.addColumn("Stock Fisik");    // kolom 5
+        model.addColumn("Tanggal Opname"); // kolom 6
+        model.addColumn("Total Selisih");  // kolom 7
+        model.addColumn("Keterangan");     // kolom 8
 
         btn_tambah.setText(" + Add ");
         btn_edit.setText(" ✎ Edit ");
@@ -224,13 +227,14 @@ public class Stock_opname extends javax.swing.JPanel {
                 .addGap(20, 20, 20)
                 .addComponent(lb, javax.swing.GroupLayout.PREFERRED_SIZE, 51, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(txtcari, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel1)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                         .addComponent(btn_tambah, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addComponent(btn_edit, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(btn_hapus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(btn_hapus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(txtcari, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLabel1)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -256,12 +260,13 @@ public class Stock_opname extends javax.swing.JPanel {
             Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
             Statement st = con.createStatement();
 
-            String query = "SELECT dp.id_pupuk, dp.nama_pupuk, dp.harga_pupuk, "
+            String query = "SELECT so.id_opname, dp.id_pupuk, dp.nama_pupuk, dp.harga_pupuk, "
                     + "do.stock_sistem, do.stock_fisik, so.tanggal_opname, "
                     + "(do.stock_fisik - do.stock_sistem) AS selisih, so.keterangan "
                     + "FROM stock_opname so "
                     + "JOIN detail_opname do ON so.id_opname = do.id_opname "
                     + "JOIN data_pupuk dp ON do.id_pupuk = dp.id_pupuk "
+                    + "WHERE so.status_delete IS NULL OR so.status_delete <> 'hapus' "
                     + "ORDER BY so.tanggal_opname DESC";
 
             ResultSet rs = st.executeQuery(query);
@@ -274,15 +279,17 @@ public class Stock_opname extends javax.swing.JPanel {
                 int selisih = fisik - sistem;
 
                 model.addRow(new Object[]{
-                    rs.getString("id_pupuk"),
-                    rs.getString("nama_pupuk"),
-                    rs.getString("harga_pupuk"),
-                    sistem,
-                    fisik,
-                    rs.getDate("tanggal_opname"),
-                    selisih,
-                    rs.getString("keterangan")
+                    rs.getString("id_opname"), // kolom 0: id_opname
+                    rs.getString("id_pupuk"), // kolom 1: id_pupuk
+                    rs.getString("nama_pupuk"), // kolom 2: nama_pupuk
+                    rs.getString("harga_pupuk"), // kolom 3
+                    sistem, // kolom 4
+                    fisik, // kolom 5
+                    rs.getDate("tanggal_opname"),// kolom 6
+                    selisih, // kolom 7
+                    rs.getString("keterangan") // kolom 8
                 });
+
             }
 
             rs.close();
@@ -437,11 +444,136 @@ public class Stock_opname extends javax.swing.JPanel {
     }//GEN-LAST:event_btn_tambahActionPerformed
 
     private void btn_editActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_editActionPerformed
+        int row = table.getSelectedRow();
+        if (row == -1) {
+            JOptionPane.showMessageDialog(null, "Silakan pilih data yang ingin diedit!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Ambil data dari baris yang dipilih berdasarkan struktur baru
+        String idOpname = table.getValueAt(row, 0).toString(); // id_opname
+        String idPupuk = table.getValueAt(row, 1).toString();  // id_pupuk
+        String namaPupuk = table.getValueAt(row, 2).toString(); // nama pupuk
+        String stockSistem = table.getValueAt(row, 4).toString(); // stock_sistem
+        String stockFisik = table.getValueAt(row, 5).toString(); // stock_fisik
+        String keteranganLama = table.getValueAt(row, 8).toString(); // keterangan
+
+        JTextField tfJumlahFisik = new JTextField(stockFisik);
+        JTextField tfKeterangan = new JTextField(keteranganLama);
+
+        JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
+        panel.add(new JLabel("Nama Pupuk:"));
+        panel.add(new JLabel(namaPupuk));
+        panel.add(new JLabel("Jumlah Fisik:"));
+        panel.add(tfJumlahFisik);
+        panel.add(new JLabel("Keterangan:"));
+        panel.add(tfKeterangan);
+
+        int result = JOptionPane.showConfirmDialog(null, panel, "Edit Stock Opname", JOptionPane.OK_CANCEL_OPTION);
+
+        if (result == JOptionPane.OK_OPTION) {
+            String jumlahFisikStr = tfJumlahFisik.getText().trim();
+            String keteranganBaru = tfKeterangan.getText().trim();
+
+            if (!jumlahFisikStr.matches("\\d+")) {
+                JOptionPane.showMessageDialog(null, "Jumlah fisik tidak valid!", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            int jumlahFisikBaru = Integer.parseInt(jumlahFisikStr);
+
+            try {
+                String SUrl = "jdbc:mysql://localhost:3306/studicase_pupuk";
+                String SUser = "root";
+                String SPass = "";
+
+                Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
+                Statement st = con.createStatement();
+
+                // Update stock_opname
+                String updateOpname = "UPDATE stock_opname SET keterangan = '" + keteranganBaru + "' WHERE id_opname = '" + idOpname + "'";
+                st.executeUpdate(updateOpname);
+
+                // Update detail_opname
+                String updateDetail = "UPDATE detail_opname SET stock_fisik = " + jumlahFisikBaru
+                        + " WHERE id_opname = '" + idOpname + "' AND id_pupuk = '" + idPupuk + "'";
+                st.executeUpdate(updateDetail);
+
+                JOptionPane.showMessageDialog(null, "Data berhasil diperbarui!");
+                loadData();
+
+                st.close();
+                con.close();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(null, "Terjadi kesalahan: " + e.getMessage());
+            }
+        } else {
+            JOptionPane.showMessageDialog(null, "Edit dibatalkan.");
+        }
 
     }//GEN-LAST:event_btn_editActionPerformed
 
     private void btn_hapusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_hapusActionPerformed
+        int row = table.getSelectedRow();
+        if (row == -1) {
+            JOptionPane.showMessageDialog(null, "Silakan pilih data yang ingin dihapus!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
+        String idOpname = table.getValueAt(row, 0).toString(); // kolom 0 = id_opname
+        String namaPupuk = table.getValueAt(row, 2).toString(); // kolom 2 = nama_pupuk
+
+        int confirm = JOptionPane.showConfirmDialog(null,
+                "Yakin ingin menghapus data stock opname untuk pupuk: " + namaPupuk + "?",
+                "Konfirmasi", JOptionPane.YES_NO_OPTION);
+
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        try {
+            String SUrl = "jdbc:mysql://localhost:3306/studicase_pupuk";
+            String SUser = "root";
+            String SPass = "";
+
+            Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
+            con.setAutoCommit(false); // supaya bisa rollback kalau error
+
+            try {
+                // 1. Soft delete: update status_delete
+                String updateStatus = "UPDATE stock_opname SET status_delete = 'hapus' WHERE id_opname = ?";
+                try (PreparedStatement pst = con.prepareStatement(updateStatus)) {
+                    pst.setString(1, idOpname);
+                    pst.executeUpdate();
+                }
+
+                // 2. Panggil stored procedure rollback stok
+                String callProcedure = "{CALL sp_rollback_stock_opname(?)}";
+                try (CallableStatement cs = con.prepareCall(callProcedure)) {
+                    cs.setString(1, idOpname);
+                    cs.execute();
+                }
+
+                con.commit();
+                JOptionPane.showMessageDialog(null, "Data berhasil ditandai sebagai terhapus dan stok dikembalikan!");
+                loadData();
+            } catch (SQLException e) {
+                con.rollback();
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(null, "Gagal hapus data: " + e.getMessage());
+            } finally {
+                con.setAutoCommit(true);
+                con.close();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Koneksi gagal: " + e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Terjadi kesalahan: " + e.getMessage());
+        }
     }//GEN-LAST:event_btn_hapusActionPerformed
 
     public void searchUser(String keyword) {

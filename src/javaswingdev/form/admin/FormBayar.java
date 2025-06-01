@@ -281,14 +281,6 @@ public class FormBayar extends JFrame {
                     pstDetail.setString(2, idPupuk);
                     pstDetail.setInt(3, jumlah);
                     pstDetail.addBatch();
-
-                    // Simpan ke kartu_stock
-//                    pstInsertKartu.setString(1, idKartu);
-//                    pstInsertKartu.setString(2, idPupuk);
-//                    pstInsertKartu.setInt(3, jumlah);
-//                    pstInsertKartu.setInt(4, stokBaru);
-//                    pstInsertKartu.setString(5, "Penjualan");
-//                    pstInsertKartu.addBatch();
                 }
 
                 pstDetail.executeBatch();
@@ -320,100 +312,6 @@ public class FormBayar extends JFrame {
 }
 
 
-//    private void simpanTransaksi() {
-//        String pelanggan = txtPelanggan.getText().trim();
-//        String userId = SessionManager.currentUserIDKasir;
-//        double grandTotal = getDouble(txtGrandTotal.getText().replace("Rp ", ""));
-//        int diskon = (int) spinDiskon.getValue();
-//
-//        if (pelanggan.isEmpty()) {
-//            JOptionPane.showMessageDialog(this, "Pelanggan harus diisi!", "Peringatan", JOptionPane.WARNING_MESSAGE);
-//            return;
-//        }
-//
-//        try (Connection con = Koneksi.getKoneksi()) {
-//            if (con == null || con.isClosed()) {
-//                JOptionPane.showMessageDialog(this, "Koneksi ke database gagal.", "Error", JOptionPane.ERROR_MESSAGE);
-//                return;
-//            }
-//
-//            con.setAutoCommit(false);
-//
-//            String transaksiID = generateTransaksiID(con);
-//
-//            String sqlTransaksi = "INSERT INTO transaksi (transaksi_id, user_id, nama_pembeli, total_harga, diskon, status, waktu_transaksi) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
-//
-//            try (PreparedStatement pstTransaksi = con.prepareStatement(sqlTransaksi, PreparedStatement.RETURN_GENERATED_KEYS)) {
-//                pstTransaksi.setString(1, transaksiID);
-//                pstTransaksi.setString(2, userId);
-//                pstTransaksi.setString(3, pelanggan);
-//                pstTransaksi.setDouble(4, grandTotal);
-//                pstTransaksi.setInt(5, diskon);
-//                pstTransaksi.setString(6, "Lunas");
-//
-//                int rowsInserted = pstTransaksi.executeUpdate();
-//                if (rowsInserted == 0) {
-//                    throw new SQLException("Gagal menyimpan transaksi.");
-//                }
-//
-//                String sqlDetail = "INSERT INTO transaksi_detail (transaksi_id, id_pupuk, jumlah_beli) VALUES (?, ?, ?)";
-//                String sqlInsertKartuStock = "INSERT INTO kartu_stock (id_kartu, id_pupuk, tanggal, jumlah_keluar, sisa, keterangan) VALUES (?, ?, CURRENT_DATE, ?, ?, ?)";
-//
-//                try (PreparedStatement pstDetail = con.prepareStatement(sqlDetail); PreparedStatement pstInsertKartu = con.prepareStatement(sqlInsertKartuStock)) {
-//
-//                    for (String[] item : dataTransaksi) {
-//                        String namaPupuk = item[0];
-//                        int jumlah = Integer.parseInt(item[2]);
-//
-//                        String idPupuk = getIdPupuk(con, namaPupuk);
-//                        if (idPupuk == null) {
-//                            throw new SQLException("ID pupuk untuk " + namaPupuk + " tidak ditemukan.");
-//                        }
-//
-//                        int stokSebelum = getStokTerakhir(con, idPupuk);
-//                        int stokBaru = stokSebelum - jumlah;
-//                        String idKartu = generateIdKartu(con); // pastikan method ini Anda buat
-//
-//                        // simpan detail transaksi
-//                        pstDetail.setString(1, transaksiID);
-//                        pstDetail.setString(2, idPupuk);
-//                        pstDetail.setInt(3, jumlah);
-//                        pstDetail.addBatch();
-//
-////                        // simpan ke kartu_stock sebagai transaksi keluar
-////                        pstInsertKartu.setString(1, idKartu);
-////                        pstInsertKartu.setString(2, idPupuk);
-////                        pstInsertKartu.setInt(3, jumlah); // jumlah_keluar
-////                        pstInsertKartu.setInt(4, stokBaru); // sisa stok
-////                        pstInsertKartu.setString(5, "Penjualan");
-////                        pstInsertKartu.addBatch();
-//                    }
-//
-//                    pstDetail.executeBatch();
-//                    pstInsertKartu.executeBatch();
-//                }
-//
-//                con.commit();
-//                JOptionPane.showMessageDialog(this, "Pembayaran dan transaksi berhasil disimpan!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
-//                formTransaksiAdmin.refreshTable();
-//                double dibayar = getDouble(txtDibayar.getText().replace("Rp ", ""));
-//                double subtotal = getDouble(txtSubTotal.getText().replace("Rp ", ""));
-//                StrukPembelian.simpanStrukPDF(transaksiID, dataTransaksi, pelanggan, grandTotal, dibayar, diskon, subtotal);
-//
-//
-//                dispose();
-//            } catch (SQLException e) {
-//                if (con != null && !con.isClosed()) {
-//                    con.rollback();
-//                }
-//                e.printStackTrace();
-//                JOptionPane.showMessageDialog(this, "Error: " + e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
-//            }
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
-//        }
-//    }
 
     private int getStokTerakhir(Connection con, String idPupuk) throws SQLException {
         String sql = "SELECT sisa FROM kartu_stock WHERE id_pupuk = ? ORDER BY tanggal DESC, id_kartu DESC LIMIT 1";
@@ -500,29 +398,6 @@ public class FormBayar extends JFrame {
 
             isFormatting = false;
         });
-    }
-
-    private String generateTransaksiID() {
-        String newID = "TRX001";  // Default ID in case the database is empty
-        try (Connection con = Koneksi.getKoneksi()) {
-            String sql = "SELECT transaksi_id FROM transaksi ORDER BY transaksi_id DESC LIMIT 1";
-            PreparedStatement pst = con.prepareStatement(sql);
-            ResultSet rs = pst.executeQuery();
-
-            if (rs.next()) {
-                String lastID = rs.getString("transaksi_id");
-
-                // Ensure the last ID is at least 6 characters long ("TRX" + number)
-                if (lastID != null && lastID.length() > 3) {
-                    String numberPart = lastID.substring(3);  // Get the numeric part after "TRX"
-                    int number = Integer.parseInt(numberPart) + 1;
-                    newID = String.format("TRX%03d", number);  // Format to ensure leading zeros
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return newID;
     }
 
     public static void main(String[] args) {

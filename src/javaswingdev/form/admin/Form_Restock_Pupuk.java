@@ -63,16 +63,29 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
 
         table.setModel(model);
 
-        // Menghapus kolom password dari tabel
-        model.addColumn("No");
-//        model.addColumn("ID Stock");
-        model.addColumn("Nama Pupuk");
-        model.addColumn("Jumlah Restock");
-        model.addColumn("Tanggal Restock");
+// Tambahkan kolom dulu
+        model.addColumn("id_restock"); // Kolom 0 (tersembunyi)
+        model.addColumn("id_pupuk");   // Kolom 1 (tersembunyi)
+        model.addColumn("No");         // Kolom 2
+        model.addColumn("Nama Pupuk"); // Kolom 3
+        model.addColumn("Jumlah Restock"); // Kolom 4
+        model.addColumn("Tanggal Restock"); // Kolom 5
 
+// Baru sembunyikan kolom id_restock dan id_pupuk
+        table.getColumnModel().getColumn(0).setMinWidth(0);
+        table.getColumnModel().getColumn(0).setMaxWidth(0);
+        table.getColumnModel().getColumn(0).setWidth(0);
+        table.getColumnModel().getColumn(0).setPreferredWidth(0);
+
+        table.getColumnModel().getColumn(1).setMinWidth(0);
+        table.getColumnModel().getColumn(1).setMaxWidth(0);
+        table.getColumnModel().getColumn(1).setWidth(0);
+        table.getColumnModel().getColumn(1).setPreferredWidth(0);
+
+// Setelah itu panggil loadData
         loadData();
-//        table.setEnabled(false);
 
+//        table.setEnabled(false);
         btn_tambah.setText(" + Add ");
         btn_edit.setText(" ✎ Edit ");
         btn_hapus.setText(" 🗑 Delete ");
@@ -114,22 +127,23 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
             Connection c = Koneksi.getKoneksi();
             Statement s = c.createStatement();
 
-            String sql = "SELECT ks.id_kartu, dp.nama_pupuk, ks.jumlah_masuk, ks.tanggal, ks.keterangan "
-                    + "FROM kartu_stock ks "
-                    + "JOIN data_pupuk dp ON ks.id_pupuk = dp.id_pupuk "
-                    + "WHERE ks.jumlah_masuk > 0 "
-                    + "ORDER BY ks.tanggal ASC";
+            String sql = "SELECT rp.id_restock, dr.id_pupuk, dp.nama_pupuk, dr.jumlah, rp.tgl_restock "
+                    + "FROM restock_pupuk rp "
+                    + "JOIN detail_restock dr ON rp.id_restock = dr.id_restock "
+                    + "JOIN data_pupuk dp ON dr.id_pupuk = dp.id_pupuk "
+                    + "ORDER BY rp.tgl_restock ASC";
 
             ResultSet r = s.executeQuery(sql);
 
             int no = 1;
             while (r.next()) {
-                Object[] o = new Object[5];
-                o[0] = no++;                             // No
-                o[1] = r.getString("nama_pupuk");        // Nama Pupuk
-                o[2] = r.getInt("jumlah_masuk");         // Jumlah Masuk (Restock)
-                o[3] = r.getDate("tanggal");             // Tanggal Restock
-                o[4] = r.getString("keterangan");        // Keterangan
+                Object[] o = new Object[6];
+                o[0] = r.getString("id_restock");     // Kolom tersembunyi: id_restock
+                o[1] = r.getString("id_pupuk");       // Kolom tersembunyi: id_pupuk
+                o[2] = no++;                           // No urut
+                o[3] = r.getString("nama_pupuk");      // Nama Pupuk
+                o[4] = r.getInt("jumlah");             // Jumlah Restock
+                o[5] = r.getDate("tgl_restock");       // Tanggal Restock
 
                 model.addRow(o);
             }
@@ -454,16 +468,6 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
                 int stokBaru = stokSebelumnya + jumlahRestock;
                 String newIdKartu = String.format("kst_%03d", ++lastKartuNum);
 
-//                // Insert ke kartu_stock
-//                PreparedStatement psInsertStock = con.prepareStatement(insertStockQuery);
-//                psInsertStock.setString(1, newIdKartu);
-//                psInsertStock.setString(2, idPupuk);
-//                psInsertStock.setString(3, tanggalRestock);
-//                psInsertStock.setInt(4, jumlahRestock);
-//                psInsertStock.setInt(5, stokBaru);
-//                psInsertStock.setString(6, "Restock");
-//
-//                psInsertStock.executeUpdate();
             }
 
             JOptionPane.showMessageDialog(null, "Stok pupuk berhasil ditambahkan!");
@@ -478,14 +482,14 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
     }//GEN-LAST:event_btn_tambahActionPerformed
 
     private void btn_editActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_editActionPerformed
-// Pastikan pengguna sudah memilih baris di tabel
         int row = table.getSelectedRow();
         if (row == -1) {
             JOptionPane.showMessageDialog(null, "Silakan pilih data yang ingin diedit!", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        String idRestock = table.getValueAt(row, 0).toString();  // Ambil id_restock dari tabel
+        String idRestock = table.getValueAt(row, 0).toString();   // Ambil id_restock
+        String idPupuk = table.getValueAt(row, 1).toString();     // Ambil id_pupuk (pastikan ini disimpan di kolom tabel)
 
         String SUrl = "jdbc:mysql://localhost:3306/studicase_pupuk";
         String SUser = "root";
@@ -495,10 +499,11 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
             Class.forName("com.mysql.cj.jdbc.Driver");
             Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
 
-            // Ambil data lama dari restock_pupuk
-            String query = "SELECT id_stock, jumlah_restock FROM restock_pupuk WHERE id_restock = ?";
+            // Ambil data lama dari detail_restock
+            String query = "SELECT jumlah FROM detail_restock WHERE id_restock = ? AND id_pupuk = ?";
             PreparedStatement ps = con.prepareStatement(query);
             ps.setString(1, idRestock);
+            ps.setString(2, idPupuk);
             ResultSet rs = ps.executeQuery();
 
             if (!rs.next()) {
@@ -506,48 +511,37 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
                 return;
             }
 
-            String idStock = rs.getString("id_stock");
-            int jumlahRestockLama = rs.getInt("jumlah_restock");
+            int jumlahLama = rs.getInt("jumlah");
 
             rs.close();
             ps.close();
 
-            // Form edit hanya untuk jumlah_restock
-            JTextField tfJumlahRestock = new JTextField(String.valueOf(jumlahRestockLama));
+            // Form edit jumlah
+            JTextField tfJumlah = new JTextField(String.valueOf(jumlahLama));
 
             JPanel panel = new JPanel(new GridLayout(1, 2, 5, 5));
             panel.add(new JLabel("Jumlah Restock:"));
-            panel.add(tfJumlahRestock);
+            panel.add(tfJumlah);
 
-            int result = JOptionPane.showConfirmDialog(null, panel, "Edit Restock", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+            int result = JOptionPane.showConfirmDialog(null, panel, "Edit Jumlah Restock", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
             if (result != JOptionPane.OK_OPTION) {
                 JOptionPane.showMessageDialog(null, "Edit dibatalkan.");
                 return;
             }
 
-            int jumlahRestockBaru = Integer.parseInt(tfJumlahRestock.getText().trim());
+            int jumlahBaru = Integer.parseInt(tfJumlah.getText().trim());
 
-            // Hitung perubahan stok
-            int selisih = jumlahRestockBaru - jumlahRestockLama;
-
-            // Update jumlah_restock di restock_pupuk
-            String updateRestockQuery = "UPDATE restock_pupuk SET jumlah_restock = ? WHERE id_restock = ?";
-            PreparedStatement psUpdateRestock = con.prepareStatement(updateRestockQuery);
-            psUpdateRestock.setInt(1, jumlahRestockBaru);
-            psUpdateRestock.setString(2, idRestock);
-            psUpdateRestock.executeUpdate();
-            psUpdateRestock.close();
-
-            // Update jumlah_stock di stock_pupuk
-            String updateStockQuery = "UPDATE stock_pupuk SET jumlah_stock = jumlah_stock + ? WHERE id_stock = ?";
-            PreparedStatement psUpdateStock = con.prepareStatement(updateStockQuery);
-            psUpdateStock.setInt(1, selisih);
-            psUpdateStock.setString(2, idStock);
-            psUpdateStock.executeUpdate();
-            psUpdateStock.close();
+            // Update jumlah di detail_restock
+            String updateQuery = "UPDATE detail_restock SET jumlah = ? WHERE id_restock = ? AND id_pupuk = ?";
+            PreparedStatement psUpdate = con.prepareStatement(updateQuery);
+            psUpdate.setInt(1, jumlahBaru);
+            psUpdate.setString(2, idRestock);
+            psUpdate.setString(3, idPupuk);
+            psUpdate.executeUpdate();
+            psUpdate.close();
 
             JOptionPane.showMessageDialog(null, "Data restock berhasil diperbarui!");
-
+            loadData();
             con.close();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Terjadi kesalahan: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -562,7 +556,8 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
             return;
         }
 
-        String idRestock = table.getValueAt(row, 0).toString();  // Ambil id_restock dari tabel
+        String idRestock = table.getValueAt(row, 0).toString();  // id_restock
+        String idPupuk = table.getValueAt(row, 1).toString();    // id_pupuk
 
         int confirm = JOptionPane.showConfirmDialog(null, "Apakah Anda yakin ingin menghapus data ini?", "Konfirmasi", JOptionPane.YES_NO_OPTION);
         if (confirm != JOptionPane.YES_OPTION) {
@@ -577,40 +572,34 @@ public class Form_Restock_Pupuk extends javax.swing.JPanel {
             Class.forName("com.mysql.cj.jdbc.Driver");
             Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
 
-            // Ambil id_stock dan jumlah_restock sebelum dihapus
-            String selectQuery = "SELECT id_stock, jumlah_restock FROM restock_pupuk WHERE id_restock = ?";
-            PreparedStatement psSelect = con.prepareStatement(selectQuery);
-            psSelect.setString(1, idRestock);
-            ResultSet rs = psSelect.executeQuery();
+            // Hapus dari detail_restock
+            String deleteDetail = "DELETE FROM detail_restock WHERE id_restock = ? AND id_pupuk = ?";
+            PreparedStatement psDeleteDetail = con.prepareStatement(deleteDetail);
+            psDeleteDetail.setString(1, idRestock);
+            psDeleteDetail.setString(2, idPupuk);
+            psDeleteDetail.executeUpdate();
+            psDeleteDetail.close();
 
-            if (!rs.next()) {
-                JOptionPane.showMessageDialog(null, "Data tidak ditemukan!", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
+            // Cek apakah masih ada data di detail_restock dengan id_restock yang sama
+            String checkQuery = "SELECT COUNT(*) AS total FROM detail_restock WHERE id_restock = ?";
+            PreparedStatement psCheck = con.prepareStatement(checkQuery);
+            psCheck.setString(1, idRestock);
+            ResultSet rsCheck = psCheck.executeQuery();
+
+            if (rsCheck.next() && rsCheck.getInt("total") == 0) {
+                // Hapus dari restock_pupuk jika tidak ada detail terkait
+                String deleteRestock = "DELETE FROM restock_pupuk WHERE id_restock = ?";
+                PreparedStatement psDeleteRestock = con.prepareStatement(deleteRestock);
+                psDeleteRestock.setString(1, idRestock);
+                psDeleteRestock.executeUpdate();
+                psDeleteRestock.close();
             }
+            loadData();
 
-            String idStock = rs.getString("id_stock");
-            int jumlahRestock = rs.getInt("jumlah_restock");
+            rsCheck.close();
+            psCheck.close();
 
-            rs.close();
-            psSelect.close();
-
-            // Kurangi jumlah stok di stock_pupuk
-            String updateStockQuery = "UPDATE stock_pupuk SET jumlah_stock = jumlah_stock - ? WHERE id_stock = ?";
-            PreparedStatement psUpdateStock = con.prepareStatement(updateStockQuery);
-            psUpdateStock.setInt(1, jumlahRestock);
-            psUpdateStock.setString(2, idStock);
-            psUpdateStock.executeUpdate();
-            psUpdateStock.close();
-
-            // Hapus data dari restock_pupuk
-            String deleteQuery = "DELETE FROM restock_pupuk WHERE id_restock = ?";
-            PreparedStatement psDelete = con.prepareStatement(deleteQuery);
-            psDelete.setString(1, idRestock);
-            psDelete.executeUpdate();
-            psDelete.close();
-
-            JOptionPane.showMessageDialog(null, "Data restock berhasil dihapus!");
-
+            JOptionPane.showMessageDialog(null, "Data berhasil dihapus!");
             con.close();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Terjadi kesalahan: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);

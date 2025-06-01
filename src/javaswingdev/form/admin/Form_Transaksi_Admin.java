@@ -3,6 +3,7 @@ package javaswingdev.form.admin;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import javaswingdev.form.*;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -325,10 +326,10 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
                 return;
             }
 
-            // 🔥 Hapus "Rp" dan titik (.) pada harga sebelum parsing
-            String hargaBersih = hargaPupukStr.replace("Rp", "").replace(".", "").trim();
-            int hargaPupuk = Integer.parseInt(hargaBersih);
-            int totalHarga = hargaPupuk * jumlahBeli;
+            // ✅ Perbaikan parsing harga agar fleksibel dari hasil scan atau input manual
+            String hargaBersih = hargaPupukStr.replace("Rp", "").replace(".", "").replace(",", ".").trim();
+            double hargaPupuk = Double.parseDouble(hargaBersih);
+            double totalHarga = hargaPupuk * jumlahBeli;
 
             DefaultTableModel transaksiModel = (DefaultTableModel) tableTransaksi.getModel();
             boolean sudahAda = false;
@@ -346,7 +347,7 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
                     }
 
                     transaksiModel.setValueAt(jumlahBaru, i, 2);
-                    transaksiModel.setValueAt(formatRupiah(hargaPupuk * jumlahBaru), i, 3);
+                    transaksiModel.setValueAt(formatRupiah((int) (hargaPupuk * jumlahBaru)), i, 3);
                     sudahAda = true;
                     break;
                 }
@@ -354,15 +355,15 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
 
             if (!sudahAda) {
                 transaksiModel.addRow(new Object[]{
-                    namaPupuk, formatRupiah(hargaPupuk), jumlahBeli, formatRupiah(totalHarga)
+                    namaPupuk, formatRupiah((int) hargaPupuk), jumlahBeli, formatRupiah((int) totalHarga)
                 });
             }
 
-            hitungTotalHarga(); // 🔥 Hitung ulang total harga setelah update
-
+            hitungTotalHarga(); // 🔁 Hitung ulang total harga
             JOptionPane.showMessageDialog(null, "Berhasil ditambahkan ke transaksi!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(null, "Masukkan angka yang valid!", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Masukkan angka yang valid atau periksa format harga!\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
 
     }//GEN-LAST:event_tablemouseClicked
@@ -407,10 +408,10 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
             int jumlahBaru = jumlahBeli - jumlahKurangi;
             DefaultTableModel model = (DefaultTableModel) tableTransaksi.getModel();
 
-            // 🔥 Hapus "Rp" dan titik sebelum parsing harga
-            String hargaBersih = hargaPupukStr.replace("Rp", "").replace(".", "").trim();
-            int hargaPupuk = Integer.parseInt(hargaBersih);
-            int totalHargaBaru = hargaPupuk * jumlahBaru;
+            // 🛠️ Perbaikan parsing harga agar tidak error jika mengandung koma atau titik
+            String hargaBersih = hargaPupukStr.replace("Rp", "").replace(".", "").replace(",", ".").trim();
+            double hargaPupuk = Double.parseDouble(hargaBersih);
+            int totalHargaBaru = (int) (hargaPupuk * jumlahBaru);
 
             if (jumlahBaru == 0) {
                 model.removeRow(row);
@@ -419,11 +420,11 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
                 tableTransaksi.setValueAt(formatRupiah(totalHargaBaru), row, 3);
             }
 
-            hitungTotalHarga(); // 🔥 Hitung ulang total harga setelah pengurangan
+            hitungTotalHarga(); // 🔁 Hitung ulang total
 
             JOptionPane.showMessageDialog(null, "Jumlah berhasil dikurangi!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(null, "Masukkan angka yang valid!", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Masukkan angka yang valid atau periksa format harga!\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
 
     }//GEN-LAST:event_tableTransaksimouseClicked
@@ -509,55 +510,12 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
         System.out.println("Tabel transaksi diperbarui dan dikosongkan sebelum reload.");
     }
 
-    public void searchData(String keyword) {
-        model.getDataVector().removeAllElements();
-        model.fireTableDataChanged();
-
-        String sql
-                = "SELECT dp.id_pupuk, dp.nama_pupuk, dp.harga_pupuk, "
-                + "       COALESCE(stok.sisa, 0) AS jumlah_stock "
-                + // pakai sisa
-                "FROM   data_pupuk dp "
-                + "LEFT JOIN ( "
-                + "   SELECT ks1.id_pupuk, ks1.sisa "
-                + "   FROM   kartu_stock ks1 "
-                + "   JOIN  (SELECT id_pupuk, MAX(tanggal) AS latest "
-                + "          FROM kartu_stock GROUP BY id_pupuk) ks2 "
-                + "     ON  ks1.id_pupuk = ks2.id_pupuk "
-                + "    AND ks1.tanggal  = ks2.latest "
-                + ") stok ON dp.id_pupuk = stok.id_pupuk "
-                + "WHERE  dp.id_pupuk   LIKE ? OR "
-                + "       dp.nama_pupuk LIKE ? OR "
-                + "       dp.harga_pupuk LIKE ? OR "
-                + "       CAST(COALESCE(stok.sisa,0) AS CHAR) LIKE ?";
-
-        try (Connection c = Koneksi.getKoneksi(); PreparedStatement ps = c.prepareStatement(sql)) {
-
-            for (int i = 1; i <= 4; i++) {
-                ps.setString(i, "%" + keyword + "%");
-            }
-
-            try (ResultSet r = ps.executeQuery()) {
-                NumberFormat rupiah = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
-                while (r.next()) {
-                    model.addRow(new Object[]{
-                        r.getString("id_pupuk"),
-                        r.getString("nama_pupuk"),
-                        rupiah.format(r.getDouble("harga_pupuk")),
-                        r.getInt("jumlah_stock")
-                    });
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(null, "Error: " + e.getMessage(),
-                    "DB Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
+//    private Timer searchDelayTimer;
+//    private long lastKeyPressTime = 0;
+//    private static final int SCAN_THRESHOLD = 50;
     private Timer searchDelayTimer;
     private long lastKeyPressTime = 0;
-    private static final int SCAN_THRESHOLD = 50;
+    private final int SCAN_THRESHOLD = 100; // ms
 
     private void handleSearchOrSelect(String keyword) {
         if (keyword.isEmpty()) {
@@ -610,16 +568,18 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
         try {
             Connection c = Koneksi.getKoneksi();
             String sql = "SELECT dp.kode_pupuk, dp.nama_pupuk, dp.harga_pupuk, "
-                    + "COALESCE(ks.sisa, 0) AS jumlah_stock "
-                    + "FROM data_pupuk dp "
-                    + "LEFT JOIN ("
-                    + "   SELECT id_pupuk, sisa "
-                    + "   FROM kartu_stock ks1 "
-                    + "   WHERE ks1.tanggal = ("
-                    + "       SELECT MAX(tanggal) FROM kartu_stock ks2 WHERE ks2.id_pupuk = ks1.id_pupuk"
-                    + "   )"
-                    + ") ks ON dp.id_pupuk = ks.id_pupuk "
-                    + "WHERE dp.kode_pupuk = ?";
+                    + "       COALESCE(stok.sisa, 0) AS jumlah_stock "
+                    + "FROM   data_pupuk dp "
+                    + "LEFT JOIN ( "
+                    + "   SELECT ks1.id_pupuk, ks1.sisa "
+                    + "   FROM   kartu_stock ks1 "
+                    + "   JOIN  (SELECT id_pupuk, MAX(tanggal) AS latest "
+                    + "          FROM kartu_stock GROUP BY id_pupuk) ks2 "
+                    + "     ON  ks1.id_pupuk = ks2.id_pupuk "
+                    + "    AND ks1.tanggal  = ks2.latest "
+                    + ") stok ON dp.id_pupuk = stok.id_pupuk "
+                    + "WHERE  dp.kode_pupuk = ?";
+
             PreparedStatement ps = c.prepareStatement(sql);
             ps.setString(1, kodePupuk);
             ResultSet rs = ps.executeQuery();
@@ -634,12 +594,32 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
                     return;
                 }
 
-                int jumlahBeli = Math.min(1, jumlahStock);
+                // 🔢 Minta input jumlah beli
+                String jumlahBeliStr = JOptionPane.showInputDialog(null,
+                        "Masukkan jumlah yang ingin dibeli (stok tersedia: " + jumlahStock + "):",
+                        "Input Jumlah Beli",
+                        JOptionPane.QUESTION_MESSAGE);
+
+                if (jumlahBeliStr == null || jumlahBeliStr.trim().isEmpty()) {
+                    return; // dibatalkan
+                }
+
+                int jumlahBeli = Integer.parseInt(jumlahBeliStr);
+
+                if (jumlahBeli <= 0) {
+                    JOptionPane.showMessageDialog(null, "Jumlah harus lebih dari 0!", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                if (jumlahBeli > jumlahStock) {
+                    JOptionPane.showMessageDialog(null, "Jumlah melebihi stok yang tersedia!", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
                 double totalHarga = hargaPupuk * jumlahBeli;
-
                 NumberFormat formatRupiah = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
-                DefaultTableModel transaksiModel = (DefaultTableModel) tableTransaksi.getModel();
 
+                DefaultTableModel transaksiModel = (DefaultTableModel) tableTransaksi.getModel();
                 boolean sudahAda = false;
 
                 for (int i = 0; i < transaksiModel.getRowCount(); i++) {
@@ -648,7 +628,7 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
                         int jumlahBaru = jumlahLama + jumlahBeli;
 
                         if (jumlahBaru > jumlahStock) {
-                            JOptionPane.showMessageDialog(null, "Total pembelian melebihi stok yang tersedia!", "Error", JOptionPane.ERROR_MESSAGE);
+                            JOptionPane.showMessageDialog(null, "Total pembelian melebihi stok!", "Error", JOptionPane.ERROR_MESSAGE);
                             return;
                         }
 
@@ -661,7 +641,10 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
 
                 if (!sudahAda) {
                     transaksiModel.addRow(new Object[]{
-                        namaPupuk, formatRupiah.format(hargaPupuk), jumlahBeli, formatRupiah.format(totalHarga)
+                        namaPupuk,
+                        formatRupiah.format(hargaPupuk),
+                        jumlahBeli,
+                        formatRupiah.format(totalHarga)
                     });
                 }
 
@@ -671,9 +654,55 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
 
             rs.close();
             ps.close();
+        } catch (SQLException | NumberFormatException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Terjadi kesalahan!", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public void searchData(String keyword) {
+        model.getDataVector().removeAllElements();
+        model.fireTableDataChanged();
+
+        String sql
+                = "SELECT dp.id_pupuk, dp.nama_pupuk, dp.harga_pupuk, "
+                + "       COALESCE(stok.sisa, 0) AS jumlah_stock "
+                + // pakai sisa
+                "FROM   data_pupuk dp "
+                + "LEFT JOIN ( "
+                + "   SELECT ks1.id_pupuk, ks1.sisa "
+                + "   FROM   kartu_stock ks1 "
+                + "   JOIN  (SELECT id_pupuk, MAX(tanggal) AS latest "
+                + "          FROM kartu_stock GROUP BY id_pupuk) ks2 "
+                + "     ON  ks1.id_pupuk = ks2.id_pupuk "
+                + "    AND ks1.tanggal  = ks2.latest "
+                + ") stok ON dp.id_pupuk = stok.id_pupuk "
+                + "WHERE  dp.id_pupuk   LIKE ? OR "
+                + "       dp.nama_pupuk LIKE ? OR "
+                + "       dp.harga_pupuk LIKE ? OR "
+                + "       CAST(COALESCE(stok.sisa,0) AS CHAR) LIKE ?";
+
+        try (Connection c = Koneksi.getKoneksi(); PreparedStatement ps = c.prepareStatement(sql)) {
+
+            for (int i = 1; i <= 4; i++) {
+                ps.setString(i, "%" + keyword + "%");
+            }
+
+            try (ResultSet r = ps.executeQuery()) {
+                NumberFormat rupiah = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
+                while (r.next()) {
+                    model.addRow(new Object[]{
+                        r.getString("id_pupuk"),
+                        r.getString("nama_pupuk"),
+                        rupiah.format(r.getDouble("harga_pupuk")),
+                        r.getInt("jumlah_stock")
+                    });
+                }
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            JOptionPane.showMessageDialog(null, "Terjadi kesalahan saat mengambil data pupuk!", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Error: " + e.getMessage(),
+                    "DB Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 

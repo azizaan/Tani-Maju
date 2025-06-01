@@ -252,7 +252,6 @@ public class Form_User extends javax.swing.JPanel {
 
     private void btn_tambahActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_tambahActionPerformed
         String fullName, email, Password, query, userType;
-        String userId = null;
         String SUrl, SUser, SPass;
         SUrl = "jdbc:MySQL://localhost:3306/studicase_pupuk";
         SUser = "root";
@@ -331,25 +330,9 @@ public class Form_User extends javax.swing.JPanel {
                 // Hash password
                 Password = PasswordUtil.hashPassword(Password);
 
-                // Cari user_id terakhir
-                String getLastIdQuery = "SELECT user_id FROM user ORDER BY user_id DESC LIMIT 1";
-                ResultSet rs = st.executeQuery(getLastIdQuery);
-
-                if (rs.next()) {
-                    String lastId = rs.getString("user_id");
-                    if (lastId != null && lastId.length() >= 4) {
-                        int num = Integer.parseInt(lastId.substring(4));
-                        userId = String.format("user%03d", num + 1);
-                    } else {
-                        userId = "user001";
-                    }
-                } else {
-                    userId = "user001";
-                }
-
-                // Query insert data baru dengan type dari ComboBox
-                query = "INSERT INTO user (user_id, full_name, email, password, type) "
-                        + "VALUES ('" + userId + "', '" + fullName + "', '" + email + "', '" + Password + "', '" + userType + "')";
+                // Query insert data tanpa user_id
+                query = "INSERT INTO user (full_name, email, password, type) "
+                        + "VALUES ('" + fullName + "', '" + email + "', '" + Password + "', '" + userType + "')";
 
                 st.execute(query);
 

@@ -14,6 +14,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import javax.swing.JTextField;
 import java.sql.PreparedStatement; // Import PreparedStatement
+import javaswingdev.form.admin.EmailUtil;
 
 public class SignUp extends javax.swing.JFrame {
 
@@ -233,7 +234,8 @@ public class SignUp extends javax.swing.JFrame {
         String SUser = "root";
         String SPass = "";
 
-        try (Connection con = DriverManager.getConnection(SUrl, SUser, SPass); PreparedStatement checkPst = con.prepareStatement(queryCheck); PreparedStatement pstmtInsert = con.prepareStatement(queryInsert, Statement.RETURN_GENERATED_KEYS)) {
+        try (
+                Connection con = DriverManager.getConnection(SUrl, SUser, SPass); PreparedStatement checkPst = con.prepareStatement(queryCheck); PreparedStatement pstmtInsert = con.prepareStatement(queryInsert, Statement.RETURN_GENERATED_KEYS)) {
 
             checkPst.setString(1, rfidTag);
             ResultSet rs = checkPst.executeQuery();
@@ -244,9 +246,6 @@ public class SignUp extends javax.swing.JFrame {
                 String fullName = JOptionPane.showInputDialog(this, "Masukkan Nama Lengkap:");
                 String email = JOptionPane.showInputDialog(this, "Masukkan Email:");
                 String password = JOptionPane.showInputDialog(this, "Masukkan Password:");
-                String[] userTypes = {"user", "admin"};
-                String userType = (String) JOptionPane.showInputDialog(this, "Pilih Tipe Pengguna:",
-                        "Tipe Pengguna", JOptionPane.QUESTION_MESSAGE, null, userTypes, userTypes[0]);
 
                 if (!isValidEmail(email)) {
                     JOptionPane.showMessageDialog(this, "Email tidak valid!", "Error", JOptionPane.ERROR_MESSAGE);
@@ -254,6 +253,7 @@ public class SignUp extends javax.swing.JFrame {
                 }
 
                 password = PasswordUtil.hashPassword(password);
+                String userType = "user"; // Default tipe user
 
                 try (PreparedStatement insertPst = con.prepareStatement(queryInsert)) {
                     insertPst.setString(1, rfidTag);
@@ -309,69 +309,54 @@ public class SignUp extends javax.swing.JFrame {
     }//GEN-LAST:event_Login
 
     private void btnRegisterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegisterActionPerformed
-        // System.out.println("Sign up btn clicked");
-        String fullName, email, Password, query;
-        String userId = null; // Tambahkan variabel untuk user_id
-        String SUrl, SUser, SPass;
-        SUrl = "jdbc:MySQL://localhost:3306/studicase_pupuk";
-        SUser = "root";
-        SPass = "";
+
+        String fullName, email, passwordHash, query;
+        String SUrl = "jdbc:MySQL://localhost:3306/studicase_pupuk";
+        String SUser = "root";
+        String SPass = "";
 
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
             Connection con = DriverManager.getConnection(SUrl, SUser, SPass);
             Statement st = con.createStatement();
 
-            // Periksa apakah inputan kosong
+            // Validasi input
             if ("".equals(fname.getText())) {
                 JOptionPane.showMessageDialog(new JFrame(), "Full Name is required", "Error", JOptionPane.ERROR_MESSAGE);
             } else if (!fname.getText().matches("[a-zA-Z ]+")) {
-                // Validasi hanya huruf dan spasi
                 JOptionPane.showMessageDialog(new JFrame(), "Full Name must only contain letters and spaces", "Error", JOptionPane.ERROR_MESSAGE);
             } else if ("".equals(emailAddress.getText())) {
                 JOptionPane.showMessageDialog(new JFrame(), "Email Address is required", "Error", JOptionPane.ERROR_MESSAGE);
             } else if ("".equals(pass.getText())) {
                 JOptionPane.showMessageDialog(new JFrame(), "Password is required", "Error", JOptionPane.ERROR_MESSAGE);
             } else {
-                // Cari user_id terakhir
-                String getLastIdQuery = "SELECT user_id FROM user ORDER BY user_id DESC LIMIT 1";
-                ResultSet rs = st.executeQuery(getLastIdQuery);
-
-                if (rs.next()) {
-                    String lastId = rs.getString("user_id");
-                    if (lastId != null && lastId.length() >= 4) {
-                        int num = Integer.parseInt(lastId.substring(4)); // Ambil angka dari userXXX
-                        userId = String.format("user%03d", num + 1); // Format ke userXXX
-                    } else {
-                        // Jika ID tidak valid, mulai dari user001
-                        userId = "user001";
-                    }
-                } else {
-                    // Jika tabel kosong, mulai dari user001
-                    userId = "user001";
-                }
-
                 // Ambil input pengguna
                 fullName = fname.getText();
                 email = emailAddress.getText();
+                passwordHash = PasswordUtil.hashPassword(pass.getText());
 
-                // Hash password
-                Password = PasswordUtil.hashPassword(pass.getText());
+                // Query insert tanpa user_id (karena auto-increment)
+                query = "INSERT INTO user (full_name, email, password, type) "
+                        + "VALUES ('" + fullName + "', '" + email + "', '" + passwordHash + "', 'user')";
 
-                // Query insert data baru
-                query = "INSERT INTO user (user_id, full_name, email, password, type) "
-                        + "VALUES ('" + userId + "', '" + fullName + "', '" + email + "', '" + Password + "', 'user')";
+                st.executeUpdate(query);
+// Setelah st.executeUpdate(query);
+                EmailUtil.sendEmail(
+                        email,
+                        "Welcome to StudiCase Pupuk!",
+                        "Hi " + fullName + ",\n\nYour account has been successfully registered.\n\nThank you!"
+                );
 
-                st.execute(query);
-
-                // Reset input form
+                // Reset input
                 fname.setText("");
                 emailAddress.setText("");
                 pass.setText("");
+
                 JOptionPane.showMessageDialog(null, "New account has been created successfully!");
             }
+
         } catch (Exception e) {
-            System.out.println("Error!" + e.getMessage());
+            System.out.println("Error! " + e.getMessage());
         }
 
     }//GEN-LAST:event_btnRegisterActionPerformed
