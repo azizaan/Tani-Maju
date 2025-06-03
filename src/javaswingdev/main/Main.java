@@ -17,6 +17,7 @@ import javaswingdev.form.admin.Form_Restock_Pupuk;
 import javaswingdev.form.admin.Form_Stock_Pupuk;
 import javaswingdev.form.admin.Form_User;
 import javaswingdev.form.admin.Data_Laporan;
+import javaswingdev.form.admin.Form_Gaji;
 import javaswingdev.form.admin.Kartu_Stock;
 import javaswingdev.form.admin.Stock_opname;
 import javaswingdev.menu.EventMenuSelected;
@@ -60,11 +61,11 @@ public class Main extends javax.swing.JFrame {
             menu.addMenuItem(new ModelMenuItem(GoogleMaterialDesignIcon.PERM_CONTACT_CALENDAR, "Transaksi", "Penjualan", "Data Penjualan"));
 
             menu.addTitle("MANAGEMENT USER");
-            menu.addMenuItem(new ModelMenuItem(GoogleMaterialDesignIcon.WHATSHOT, "Data User"));
+            menu.addMenuItem(new ModelMenuItem(GoogleMaterialDesignIcon.WHATSHOT, "Management User", "Data User", "Data Gaji"));
 
             menu.addTitle("INVENTORY");
             menu.addMenuItem(new ModelMenuItem(GoogleMaterialDesignIcon.STORE, "Data Barang Pupuk"));
-            menu.addMenuItem(new ModelMenuItem(GoogleMaterialDesignIcon.STORAGE, "Stock", "Stock", "Restock", "Stock Opname", "Kartu Stock")); // Tambahan menu Stock
+            menu.addMenuItem(new ModelMenuItem(GoogleMaterialDesignIcon.STORAGE, "Management Stock", "Stock", "Restock", "Stock Opname", "Kartu Stock")); // Tambahan menu Stock
 
             menu.addTitle("LAPORAN");
             menu.addMenuItem(new ModelMenuItem(GoogleMaterialDesignIcon.ASSESSMENT, "Data_Laporan"));
@@ -80,9 +81,7 @@ public class Main extends javax.swing.JFrame {
                         showForm(new Form_Dashboard_User());
                     } else if (index == 1 && indexSubMenu == 0) {
                         showForm(new Form_Transaksi_User("User"));
-                    } else if (index == 2 && indexSubMenu == 0) { // Profile untuk Admin
-                        showForm(new Form_Empty(index + " " + indexSubMenu));
-                    } else if (index == 3 && indexSubMenu == 0) { // Logout
+                    } else if (index == 2 && indexSubMenu == 0) { // Logout
                         int confirm = JOptionPane.showConfirmDialog(null, "Anda yakin ingin logout?", "Konfirmasi Logout", JOptionPane.YES_NO_OPTION);
                         if (confirm == JOptionPane.YES_OPTION) {
                             setVisible(false); // Sembunyikan form utama
@@ -106,6 +105,10 @@ public class Main extends javax.swing.JFrame {
                         showForm(new Data_Transaksi_Admin("Admin"));
                     } else if (index == 2 && indexSubMenu == 0) {
                         showForm(new Form_User("User"));
+                    } else if (index == 2 && indexSubMenu == 1) {
+                        showForm(new Form_User("User"));
+                    } else if (index == 2 && indexSubMenu == 2) {
+                        showForm(new Form_Gaji("Gaji"));
                     } else if (index == 3 && indexSubMenu == 0) {
                         showForm(new Form_Data_Pupuk("Data Barang Pupuk"));
                     } else if (index == 4 && indexSubMenu == 1) { // Stock dipindah ke submenu 1
@@ -118,9 +121,7 @@ public class Main extends javax.swing.JFrame {
                         showForm(new Kartu_Stock("Kartu Stock"));
                     } else if (index == 5 && indexSubMenu == 0) { // Laporan turun ke index 5
                         showForm(new Data_Laporan("Laporan"));
-                    } else if (index == 6 && indexSubMenu == 0) { // Profile turun ke index 6
-                        showForm(new Form_Empty("Profile"));
-                    } else if (index == 7 && indexSubMenu == 0) { // Logout turun ke index 7
+                    } else if (index == 6 && indexSubMenu == 0) { // Logout turun ke index 7
                         int confirm = JOptionPane.showConfirmDialog(null, "Anda yakin ingin logout?", "Konfirmasi Logout", JOptionPane.YES_NO_OPTION);
                         if (confirm == JOptionPane.YES_OPTION) {
                             setVisible(false); // Sembunyikan form utama
@@ -136,16 +137,21 @@ public class Main extends javax.swing.JFrame {
 
                 }
             }
-        });
+        }
+        );
 
         // Tambahkan Profile dan Logout di bagian bawah menu
-        menu.addTitle("PENGATURAN");
-        menu.addMenuItem(new ModelMenuItem(GoogleMaterialDesignIcon.ACCOUNT_CIRCLE, "Profile"));
-        menu.addMenuItem(new ModelMenuItem(GoogleMaterialDesignIcon.EXIT_TO_APP, "Logout"));
+        menu.addTitle(
+                "PENGATURAN");
+//        menu.addMenuItem(
+//                new ModelMenuItem(GoogleMaterialDesignIcon.ACCOUNT_CIRCLE, "Profile"));
+        menu.addMenuItem(
+                new ModelMenuItem(GoogleMaterialDesignIcon.EXIT_TO_APP, "Logout"));
 
 //        menu.revalidate();
 //        menu.repaint();
-        menu.setSelectedIndex(0, 0);
+        menu.setSelectedIndex(
+                0, 0);
     }
 
     public void showForm(Component com) {
@@ -243,16 +249,24 @@ public class Main extends javax.swing.JFrame {
                 if ("Nimbus".equals(info.getName())) {
                     javax.swing.UIManager.setLookAndFeel(info.getClassName());
                     break;
+
                 }
             }
         } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(Main.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(Main.class
+                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
+
         } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(Main.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(Main.class
+                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
+
         } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(Main.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(Main.class
+                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
+
         } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(Main.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(Main.class
+                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
         //</editor-fold>
 

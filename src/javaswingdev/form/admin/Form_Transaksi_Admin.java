@@ -447,8 +447,17 @@ public class Form_Transaksi_Admin extends javax.swing.JPanel {
 
 
     private void Cari(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_Cari
-        String keyword = txtcari.getText().trim();
-        handleSearchOrSelect(keyword);
+        if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
+            String keyword = txtcari.getText().trim();
+            if (!keyword.isEmpty()) {
+                if (isKodePupukValid(keyword)) {
+                    autoSelectPupuk(keyword); // langsung proses transaksi
+                } else {
+                    JOptionPane.showMessageDialog(null, "Kode pupuk tidak ditemukan!", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+            txtcari.setText(""); // reset input
+        }
     }//GEN-LAST:event_Cari
 
     private void btnBayarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnBayarActionPerformed

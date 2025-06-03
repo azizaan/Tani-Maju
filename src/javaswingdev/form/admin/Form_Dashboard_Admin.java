@@ -12,6 +12,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.sql.CallableStatement;
 import javaswingdev.form.*;
 import javaswingdev.main.Main;
 import java.time.LocalDateTime;
@@ -91,29 +92,21 @@ public class Form_Dashboard_Admin extends javax.swing.JPanel {
     private void loadDataTransaksi() {
         try {
             Connection con = Koneksi.getKoneksi();
-            Statement stmt = con.createStatement();
+            CallableStatement cs = con.prepareCall("{CALL getTotalTransaksi(?, ?)}");
 
-            // Mendapatkan bulan dan tahun saat ini
+            // Ambil bulan dan tahun saat ini
             LocalDate now = LocalDate.now();
-            int bulan = now.getMonthValue();
-            int tahun = now.getYear();
+            cs.setInt(1, now.getMonthValue());
+            cs.setInt(2, now.getYear());
 
-            // Query untuk menghitung jumlah transaksi dalam bulan ini
-            String sql = "SELECT COUNT(transaksi_id) AS total_transaksi "
-                    + "FROM transaksi "
-                    + "WHERE MONTH(waktu_transaksi) = " + bulan + " AND YEAR(waktu_transaksi) = " + tahun;
-
-            ResultSet rs = stmt.executeQuery(sql);
-
+            ResultSet rs = cs.executeQuery();
             if (rs.next()) {
                 String jumlahTransaksi = rs.getString("total_transaksi");
-
-                // Mengatur data card1 dengan jumlah transaksi
                 card1.setData(new ModelCard(null, null, null, jumlahTransaksi, "Jumlah Transaksi Bulan Ini"));
             }
 
             rs.close();
-            stmt.close();
+            cs.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -122,42 +115,30 @@ public class Form_Dashboard_Admin extends javax.swing.JPanel {
     private void loadDataKeuntungan() {
         try {
             Connection con = Koneksi.getKoneksi();
-            Statement stmt = con.createStatement();
+            CallableStatement cs = con.prepareCall("{CALL getTotalKeuntungan(?, ?)}");
 
-            // Mendapatkan bulan dan tahun saat ini
+            // Ambil bulan dan tahun saat ini
             LocalDate now = LocalDate.now();
             int bulan = now.getMonthValue();
             int tahun = now.getYear();
 
-            // Query untuk menghitung total keuntungan per bulan
-            String sql = "SELECT SUM(t.total_harga) AS total_keuntungan "
-                    + "FROM transaksi t "
-                    + "WHERE MONTH(t.waktu_transaksi) = " + bulan + " AND YEAR(t.waktu_transaksi) = " + tahun;
+            cs.setInt(1, bulan);
+            cs.setInt(2, tahun);
 
-            ResultSet rs = stmt.executeQuery(sql);
+            ResultSet rs = cs.executeQuery();
 
             if (rs.next()) {
                 double totalKeuntungan = rs.getDouble("total_keuntungan");
 
-                // Format ke Rupiah tanpa desimal
-                DecimalFormat kursIndonesia = (DecimalFormat) DecimalFormat.getCurrencyInstance();
-                DecimalFormatSymbols formatRp = new DecimalFormatSymbols();
+                // Format ke Rupiah
+                String keuntunganFormatted = formatRupiah(totalKeuntungan);
 
-                formatRp.setCurrencySymbol("Rp ");
-                formatRp.setMonetaryDecimalSeparator(',');
-                formatRp.setGroupingSeparator('.');
-
-                kursIndonesia.setDecimalFormatSymbols(formatRp);
-                kursIndonesia.setMaximumFractionDigits(0); // Menghilangkan angka desimal
-
-                String keuntunganFormatted = kursIndonesia.format(totalKeuntungan);
-
-                // Set data ke card2 dengan format Rupiah
+                // Tampilkan ke card2
                 card2.setData(new ModelCard(null, null, null, keuntunganFormatted, "Pemasukan Bulan Ini"));
             }
 
             rs.close();
-            stmt.close();
+            cs.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -166,21 +147,17 @@ public class Form_Dashboard_Admin extends javax.swing.JPanel {
     private void loadDataPengeluaran() {
         try {
             Connection con = Koneksi.getKoneksi();
-            Statement stmt = con.createStatement();
+            CallableStatement cs = con.prepareCall("{CALL getTotalPengeluaran(?, ?)}");
 
-            // Mendapatkan bulan dan tahun saat ini
+            // Ambil bulan dan tahun saat ini
             LocalDate now = LocalDate.now();
             int bulan = now.getMonthValue();
             int tahun = now.getYear();
 
-            // Query menghitung total pengeluaran dari restock pupuk bulan ini
-            String sql = "SELECT SUM(d.jumlah * CAST(p.harga_pupuk AS UNSIGNED)) AS total_pengeluaran "
-                    + "FROM restock_pupuk r "
-                    + "JOIN detail_restock d ON r.id_restock = d.id_restock "
-                    + "JOIN data_pupuk p ON d.id_pupuk = p.id_pupuk "
-                    + "WHERE MONTH(r.tgl_restock) = " + bulan + " AND YEAR(r.tgl_restock) = " + tahun;
+            cs.setInt(1, bulan);
+            cs.setInt(2, tahun);
 
-            ResultSet rs = stmt.executeQuery(sql);
+            ResultSet rs = cs.executeQuery();
 
             if (rs.next()) {
                 double pengeluaran = rs.getDouble("total_pengeluaran");
@@ -188,12 +165,12 @@ public class Form_Dashboard_Admin extends javax.swing.JPanel {
                 // Format ke Rupiah
                 String formattedPengeluaran = formatRupiah(pengeluaran);
 
-                // Menampilkan hasil ke card3
+                // Tampilkan ke card3
                 card3.setData(new ModelCard(null, null, null, formattedPengeluaran, "Pengeluaran Bulan Ini"));
             }
 
             rs.close();
-            stmt.close();
+            cs.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -211,15 +188,7 @@ public class Form_Dashboard_Admin extends javax.swing.JPanel {
             Statement stmt = con.createStatement();
 
             // Query gabungan untuk pemasukan dan pengeluaran per bulan di tahun ini
-            String sql = "SELECT MONTH(t.waktu_transaksi) AS bulan, "
-                    + "SUM(t.total_harga) AS total_pemasukan, "
-                    + "SUM(CAST(d.jumlah_beli AS UNSIGNED) * CAST(p.harga_pupuk AS UNSIGNED)) AS total_pengeluaran "
-                    + "FROM transaksi t "
-                    + "LEFT JOIN transaksi_detail d ON t.transaksi_id = d.transaksi_id "
-                    + "LEFT JOIN data_pupuk p ON d.id_pupuk = p.id_pupuk "
-                    + "WHERE YEAR(t.waktu_transaksi) = YEAR(CURDATE()) "
-                    + "GROUP BY MONTH(t.waktu_transaksi)";
-
+            String sql = "CALL get_chart_tahunan()";
             ResultSet rs = stmt.executeQuery(sql);
 
             // Reset legend & data chart

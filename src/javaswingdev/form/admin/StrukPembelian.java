@@ -28,13 +28,15 @@ public class StrukPembelian {
     public static void simpanStrukPDF(String transaksiID, List<String[]> dataTransaksi, String pelanggan, double totalBayar, double tunai, int diskon, double subtotal) {
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            Document document = new Document(PageSize.A6);
+            Rectangle customPageSize = new Rectangle(290f, 1000f); // 80mm x panjang 1000pt
+            Document document = new Document(customPageSize, 10f, 10f, 10f, 10f);
+
             PdfWriter.getInstance(document, outputStream);
             document.open();
 
             Font fontTitle = new Font(Font.HELVETICA, 12, Font.BOLD);
-            Font fontNormal = new Font(Font.HELVETICA, 8, Font.NORMAL);
-            Font fontBold = new Font(Font.HELVETICA, 8, Font.BOLD);
+            Font fontNormal = new Font(Font.HELVETICA, 10, Font.NORMAL);
+            Font fontBold = new Font(Font.HELVETICA, 10, Font.BOLD);
 
             // Tambahkan logo di atas nama toko
             try {
@@ -54,7 +56,7 @@ public class StrukPembelian {
             Paragraph alamat = new Paragraph("AJUNG - JEMBER\nDSN CURAHKATES RT03RW10\nKLOMPANGAN AJUNG JEMBER, 68175\n", fontNormal);
             alamat.setAlignment(Element.ALIGN_CENTER);
             document.add(alamat);
-            document.add(new Paragraph("-----------------------------------------------------------------------------------", fontNormal));
+            document.add(new Paragraph("--------------------------------------------------------------------------------", fontNormal));
 
             SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yy - HH:mm");
             String waktu = sdf.format(new Date());
@@ -82,7 +84,7 @@ public class StrukPembelian {
 
             document.add(infoTable);
 
-            Paragraph garis = new Paragraph("-----------------------------------------------------------------------------------", fontNormal);
+            Paragraph garis = new Paragraph("--------------------------------------------------------------------------------", fontNormal);
             garis.setSpacingBefore(0f); // Tambahan untuk mengurangi jarak atas
             garis.setSpacingAfter(0f);  // Tambahan untuk mengurangi jarak bawah
             garis.setAlignment(Element.ALIGN_CENTER);
@@ -111,7 +113,7 @@ public class StrukPembelian {
             }
 
             document.add(table);
-            document.add(new Paragraph("-----------------------------------------------------------------------------------", fontNormal));
+            document.add(new Paragraph("--------------------------------------------------------------------------------", fontNormal));
 
             // Total Pembayaran
             PdfPTable tableTotal = new PdfPTable(2);
@@ -134,7 +136,7 @@ public class StrukPembelian {
             tableTotal.addCell(getStyledCell("Rp " + String.format("%,.2f", tunai - totalBayar), fontBold, Element.ALIGN_RIGHT));
 
             document.add(tableTotal);
-            document.add(new Paragraph("-----------------------------------------------------------------------------------", fontNormal));
+            document.add(new Paragraph("--------------------------------------------------------------------------------", fontNormal));
 
             // Footer
             Paragraph footer = new Paragraph("LAYANAN KONSUMEN\nSMS/WA 082143618116 \ntanimaju1224@gmail.com\n\nBELANJA LEBIH MUDAH DI TaniKasir\n", fontNormal);

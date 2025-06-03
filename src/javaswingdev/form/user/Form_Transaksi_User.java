@@ -1,9 +1,10 @@
 package javaswingdev.form.user;
 
-import javaswingdev.form.user.*;
+import javaswingdev.form.admin.*;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import javaswingdev.form.*;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -49,6 +50,14 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
         TotalHarga.setText("Rp 0,00");
 
         txtcari.requestFocusInWindow();
+
+        btnBayar.setText("Bayar");
+        btnBayar.setColor(new Color(47, 128, 237)); // #2F80ED
+        btnBayar.setColorOver(new Color(26, 106, 211)); // Lebih gelap saat hover
+        btnBayar.setColorClick(new Color(15, 90, 190)); // Saat klik
+        btnBayar.setBorderColor(new Color(47, 128, 237));
+        btnBayar.setForeground(Color.WHITE);
+        btnBayar.setRadius(20);
     }
 
     private DefaultTableModel model;
@@ -61,11 +70,19 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
             Connection c = Koneksi.getKoneksi();
             Statement s = c.createStatement();
 
-            // JOIN tabel data_pupuk dengan stock_pupuk dan hanya tampilkan stok > 0
-            String sql = "SELECT dp.id_pupuk, dp.nama_pupuk, dp.harga_pupuk, sp.jumlah_stock "
+            String sql = "SELECT dp.id_pupuk, dp.nama_pupuk, dp.harga_pupuk, ks1.sisa "
                     + "FROM data_pupuk dp "
-                    + "LEFT JOIN stock_pupuk sp ON dp.id_pupuk = sp.id_pupuk "
-                    + "WHERE sp.jumlah_stock > 0";
+                    + "LEFT JOIN ( "
+                    + "    SELECT id_pupuk, sisa "
+                    + "    FROM ( "
+                    + "        SELECT id_pupuk, sisa, "
+                    + "        ROW_NUMBER() OVER (PARTITION BY id_pupuk ORDER BY tanggal DESC, id_kartu DESC) AS rn "
+                    + "        FROM kartu_stock "
+                    + "    ) sub "
+                    + "    WHERE rn = 1 "
+                    + ") ks1 ON dp.id_pupuk = ks1.id_pupuk "
+                    + "WHERE ks1.sisa > 0 "
+                    + "ORDER BY dp.id_pupuk ASC;";
 
             ResultSet r = s.executeQuery(sql);
 
@@ -80,7 +97,7 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
                 String hargaFormatted = "Rp" + formatRupiah.format(harga);
                 o[2] = hargaFormatted;
 
-                o[3] = r.getInt("jumlah_stock");
+                o[3] = r.getInt("sisa");
 
                 model.addRow(o);
             }
@@ -107,14 +124,14 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
         jPanel1 = new javax.swing.JPanel();
         TotalHarga = new javax.swing.JLabel();
         jLabel3 = new javax.swing.JLabel();
-        Bayar = new javax.swing.JButton();
+        btnBayar = new button.MyButton();
 
         setOpaque(false);
 
         lb.setFont(new java.awt.Font("sansserif", 1, 24)); // NOI18N
         lb.setForeground(new java.awt.Color(125, 125, 125));
         lb.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        lb.setText("Form Transaksi Kasir");
+        lb.setText("Form Transaksi Admin");
 
         table.setForeground(new java.awt.Color(0, 0, 255));
         table.setModel(new javax.swing.table.DefaultTableModel(
@@ -204,10 +221,11 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
                     .addContainerGap()))
         );
 
-        Bayar.setText("Bayar");
-        Bayar.addActionListener(new java.awt.event.ActionListener() {
+        btnBayar.setText("Bayar");
+        btnBayar.setBorderPainted(false);
+        btnBayar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                BayarActionPerformed(evt);
+                btnBayarActionPerformed(evt);
             }
         });
 
@@ -225,11 +243,11 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                             .addGroup(layout.createSequentialGroup()
                                 .addGap(0, 0, Short.MAX_VALUE)
-                                .addComponent(Bayar, javax.swing.GroupLayout.PREFERRED_SIZE, 111, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addComponent(btnBayar, javax.swing.GroupLayout.PREFERRED_SIZE, 99, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(layout.createSequentialGroup()
                                 .addComponent(jLabel1)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(txtcari, javax.swing.GroupLayout.DEFAULT_SIZE, 96, Short.MAX_VALUE)
+                                .addComponent(txtcari, javax.swing.GroupLayout.DEFAULT_SIZE, 101, Short.MAX_VALUE)
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                                     .addGroup(layout.createSequentialGroup()
                                         .addGap(6, 6, 6)
@@ -258,9 +276,9 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
                         .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 301, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(Bayar, javax.swing.GroupLayout.PREFERRED_SIZE, 53, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(70, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(btnBayar, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(78, Short.MAX_VALUE))
             .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(layout.createSequentialGroup()
                     .addGap(98, 98, 98)
@@ -309,10 +327,10 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
                 return;
             }
 
-            // 🔥 Hapus "Rp" dan titik (.) pada harga sebelum parsing
-            String hargaBersih = hargaPupukStr.replace("Rp", "").replace(".", "").trim();
-            int hargaPupuk = Integer.parseInt(hargaBersih);
-            int totalHarga = hargaPupuk * jumlahBeli;
+            // ✅ Perbaikan parsing harga agar fleksibel dari hasil scan atau input manual
+            String hargaBersih = hargaPupukStr.replace("Rp", "").replace(".", "").replace(",", ".").trim();
+            double hargaPupuk = Double.parseDouble(hargaBersih);
+            double totalHarga = hargaPupuk * jumlahBeli;
 
             DefaultTableModel transaksiModel = (DefaultTableModel) tableTransaksi.getModel();
             boolean sudahAda = false;
@@ -330,7 +348,7 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
                     }
 
                     transaksiModel.setValueAt(jumlahBaru, i, 2);
-                    transaksiModel.setValueAt(formatRupiah(hargaPupuk * jumlahBaru), i, 3);
+                    transaksiModel.setValueAt(formatRupiah((int) (hargaPupuk * jumlahBaru)), i, 3);
                     sudahAda = true;
                     break;
                 }
@@ -338,15 +356,15 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
 
             if (!sudahAda) {
                 transaksiModel.addRow(new Object[]{
-                    namaPupuk, formatRupiah(hargaPupuk), jumlahBeli, formatRupiah(totalHarga)
+                    namaPupuk, formatRupiah((int) hargaPupuk), jumlahBeli, formatRupiah((int) totalHarga)
                 });
             }
 
-            hitungTotalHarga(); // 🔥 Hitung ulang total harga setelah update
-
+            hitungTotalHarga(); // 🔁 Hitung ulang total harga
             JOptionPane.showMessageDialog(null, "Berhasil ditambahkan ke transaksi!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(null, "Masukkan angka yang valid!", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Masukkan angka yang valid atau periksa format harga!\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
 
     }//GEN-LAST:event_tablemouseClicked
@@ -391,10 +409,10 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
             int jumlahBaru = jumlahBeli - jumlahKurangi;
             DefaultTableModel model = (DefaultTableModel) tableTransaksi.getModel();
 
-            // 🔥 Hapus "Rp" dan titik sebelum parsing harga
-            String hargaBersih = hargaPupukStr.replace("Rp", "").replace(".", "").trim();
-            int hargaPupuk = Integer.parseInt(hargaBersih);
-            int totalHargaBaru = hargaPupuk * jumlahBaru;
+            // 🛠️ Perbaikan parsing harga agar tidak error jika mengandung koma atau titik
+            String hargaBersih = hargaPupukStr.replace("Rp", "").replace(".", "").replace(",", ".").trim();
+            double hargaPupuk = Double.parseDouble(hargaBersih);
+            int totalHargaBaru = (int) (hargaPupuk * jumlahBaru);
 
             if (jumlahBaru == 0) {
                 model.removeRow(row);
@@ -403,11 +421,11 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
                 tableTransaksi.setValueAt(formatRupiah(totalHargaBaru), row, 3);
             }
 
-            hitungTotalHarga(); // 🔥 Hitung ulang total harga setelah pengurangan
+            hitungTotalHarga(); // 🔁 Hitung ulang total
 
             JOptionPane.showMessageDialog(null, "Jumlah berhasil dikurangi!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(null, "Masukkan angka yang valid!", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Masukkan angka yang valid atau periksa format harga!\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
 
     }//GEN-LAST:event_tableTransaksimouseClicked
@@ -434,7 +452,7 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
         handleSearchOrSelect(keyword);
     }//GEN-LAST:event_Cari
 
-    private void BayarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BayarActionPerformed
+    private void btnBayarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnBayarActionPerformed
         DefaultTableModel model = (DefaultTableModel) tableTransaksi.getModel();
 
         // Cek apakah tabel kosong
@@ -479,7 +497,7 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
         // Kirim data transaksi ke FormBayar
         FormBayar bayarFrame = new FormBayar(dataTransaksi, totalKeseluruhan, this);
         bayarFrame.setVisible(true);
-    }//GEN-LAST:event_BayarActionPerformed
+    }//GEN-LAST:event_btnBayarActionPerformed
 
     public void refreshTable() {
         // Menghapus semua data di tabel sebelum memuat ulang
@@ -493,46 +511,12 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
         System.out.println("Tabel transaksi diperbarui dan dikosongkan sebelum reload.");
     }
 
-    public void searchData(String keyword) {
-        model.getDataVector().removeAllElements();
-        model.fireTableDataChanged();
-
-        try {
-            Connection c = Koneksi.getKoneksi();
-            Statement s = c.createStatement();
-
-            // Query pencarian dengan JOIN stock_pupuk
-            String sql = "SELECT dp.id_pupuk, dp.nama_pupuk, dp.harga_pupuk, sp.jumlah_stock "
-                    + "FROM data_pupuk dp "
-                    + "LEFT JOIN stock_pupuk sp ON dp.id_pupuk = sp.id_pupuk "
-                    + "WHERE dp.id_pupuk LIKE '%" + keyword + "%' OR "
-                    + "dp.nama_pupuk LIKE '%" + keyword + "%' OR "
-                    + "dp.harga_pupuk LIKE '%" + keyword + "%' OR "
-                    + "sp.jumlah_stock LIKE '%" + keyword + "%'";
-            ResultSet r = s.executeQuery(sql);
-
-            NumberFormat rupiahFormat = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
-
-            while (r.next()) {
-                Object[] o = new Object[4];
-                o[0] = r.getString("id_pupuk");
-                o[1] = r.getString("nama_pupuk");
-                double harga = r.getDouble("harga_pupuk");
-                o[2] = rupiahFormat.format(harga);
-                o[3] = r.getInt("jumlah_stock");
-                model.addRow(o);
-            }
-            r.close();
-            s.close();
-        } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
+//    private Timer searchDelayTimer;
+//    private long lastKeyPressTime = 0;
+//    private static final int SCAN_THRESHOLD = 50;
     private Timer searchDelayTimer;
     private long lastKeyPressTime = 0;
-    private static final int SCAN_THRESHOLD = 50;
+    private final int SCAN_THRESHOLD = 100; // ms
 
     private void handleSearchOrSelect(String keyword) {
         if (keyword.isEmpty()) {
@@ -584,10 +568,19 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
     private void autoSelectPupuk(String kodePupuk) {
         try {
             Connection c = Koneksi.getKoneksi();
-            String sql = "SELECT dp.kode_pupuk, dp.nama_pupuk, dp.harga_pupuk, sp.jumlah_stock "
-                    + "FROM data_pupuk dp "
-                    + "LEFT JOIN stock_pupuk sp ON dp.id_pupuk = sp.id_pupuk " // Perbaikan JOIN
-                    + "WHERE dp.kode_pupuk = ?"; // Pencarian tetap berdasarkan kode_pupuk
+            String sql = "SELECT dp.kode_pupuk, dp.nama_pupuk, dp.harga_pupuk, "
+                    + "       COALESCE(stok.sisa, 0) AS jumlah_stock "
+                    + "FROM   data_pupuk dp "
+                    + "LEFT JOIN ( "
+                    + "   SELECT ks1.id_pupuk, ks1.sisa "
+                    + "   FROM   kartu_stock ks1 "
+                    + "   JOIN  (SELECT id_pupuk, MAX(tanggal) AS latest "
+                    + "          FROM kartu_stock GROUP BY id_pupuk) ks2 "
+                    + "     ON  ks1.id_pupuk = ks2.id_pupuk "
+                    + "    AND ks1.tanggal  = ks2.latest "
+                    + ") stok ON dp.id_pupuk = stok.id_pupuk "
+                    + "WHERE  dp.kode_pupuk = ?";
+
             PreparedStatement ps = c.prepareStatement(sql);
             ps.setString(1, kodePupuk);
             ResultSet rs = ps.executeQuery();
@@ -602,12 +595,32 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
                     return;
                 }
 
-                int jumlahBeli = Math.min(1, jumlahStock);
+                // 🔢 Minta input jumlah beli
+                String jumlahBeliStr = JOptionPane.showInputDialog(null,
+                        "Masukkan jumlah yang ingin dibeli (stok tersedia: " + jumlahStock + "):",
+                        "Input Jumlah Beli",
+                        JOptionPane.QUESTION_MESSAGE);
+
+                if (jumlahBeliStr == null || jumlahBeliStr.trim().isEmpty()) {
+                    return; // dibatalkan
+                }
+
+                int jumlahBeli = Integer.parseInt(jumlahBeliStr);
+
+                if (jumlahBeli <= 0) {
+                    JOptionPane.showMessageDialog(null, "Jumlah harus lebih dari 0!", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                if (jumlahBeli > jumlahStock) {
+                    JOptionPane.showMessageDialog(null, "Jumlah melebihi stok yang tersedia!", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
                 double totalHarga = hargaPupuk * jumlahBeli;
-
                 NumberFormat formatRupiah = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
-                DefaultTableModel transaksiModel = (DefaultTableModel) tableTransaksi.getModel();
 
+                DefaultTableModel transaksiModel = (DefaultTableModel) tableTransaksi.getModel();
                 boolean sudahAda = false;
 
                 for (int i = 0; i < transaksiModel.getRowCount(); i++) {
@@ -616,7 +629,7 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
                         int jumlahBaru = jumlahLama + jumlahBeli;
 
                         if (jumlahBaru > jumlahStock) {
-                            JOptionPane.showMessageDialog(null, "Total pembelian melebihi stok yang tersedia!", "Error", JOptionPane.ERROR_MESSAGE);
+                            JOptionPane.showMessageDialog(null, "Total pembelian melebihi stok!", "Error", JOptionPane.ERROR_MESSAGE);
                             return;
                         }
 
@@ -629,7 +642,10 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
 
                 if (!sudahAda) {
                     transaksiModel.addRow(new Object[]{
-                        namaPupuk, formatRupiah.format(hargaPupuk), jumlahBeli, formatRupiah.format(totalHarga)
+                        namaPupuk,
+                        formatRupiah.format(hargaPupuk),
+                        jumlahBeli,
+                        formatRupiah.format(totalHarga)
                     });
                 }
 
@@ -639,17 +655,62 @@ public class Form_Transaksi_User extends javax.swing.JPanel {
 
             rs.close();
             ps.close();
+        } catch (SQLException | NumberFormatException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Terjadi kesalahan!", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public void searchData(String keyword) {
+        model.getDataVector().removeAllElements();
+        model.fireTableDataChanged();
+
+        String sql
+                = "SELECT dp.id_pupuk, dp.nama_pupuk, dp.harga_pupuk, "
+                + "       COALESCE(stok.sisa, 0) AS jumlah_stock "
+                + // pakai sisa
+                "FROM   data_pupuk dp "
+                + "LEFT JOIN ( "
+                + "   SELECT ks1.id_pupuk, ks1.sisa "
+                + "   FROM   kartu_stock ks1 "
+                + "   JOIN  (SELECT id_pupuk, MAX(tanggal) AS latest "
+                + "          FROM kartu_stock GROUP BY id_pupuk) ks2 "
+                + "     ON  ks1.id_pupuk = ks2.id_pupuk "
+                + "    AND ks1.tanggal  = ks2.latest "
+                + ") stok ON dp.id_pupuk = stok.id_pupuk "
+                + "WHERE  dp.id_pupuk   LIKE ? OR "
+                + "       dp.nama_pupuk LIKE ? OR "
+                + "       dp.harga_pupuk LIKE ? OR "
+                + "       CAST(COALESCE(stok.sisa,0) AS CHAR) LIKE ?";
+
+        try (Connection c = Koneksi.getKoneksi(); PreparedStatement ps = c.prepareStatement(sql)) {
+
+            for (int i = 1; i <= 4; i++) {
+                ps.setString(i, "%" + keyword + "%");
+            }
+
+            try (ResultSet r = ps.executeQuery()) {
+                NumberFormat rupiah = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
+                while (r.next()) {
+                    model.addRow(new Object[]{
+                        r.getString("id_pupuk"),
+                        r.getString("nama_pupuk"),
+                        rupiah.format(r.getDouble("harga_pupuk")),
+                        r.getInt("jumlah_stock")
+                    });
+                }
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            JOptionPane.showMessageDialog(null, "Terjadi kesalahan saat mengambil data pupuk!", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Error: " + e.getMessage(),
+                    "DB Error", JOptionPane.ERROR_MESSAGE);
         }
-
     }
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton Bayar;
     private javax.swing.JLabel TotalHarga;
+    private button.MyButton btnBayar;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JPanel jPanel1;

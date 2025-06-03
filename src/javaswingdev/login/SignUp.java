@@ -265,7 +265,7 @@ public class SignUp extends javax.swing.JFrame {
                 }
 
                 JOptionPane.showMessageDialog(this, "Pendaftaran berhasil!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
-                this.dispose();
+//                this.dispose();
             }
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Terjadi kesalahan: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
